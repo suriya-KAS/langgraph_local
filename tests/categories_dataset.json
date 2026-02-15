@@ -1,0 +1,58 @@
+{
+    "v": 1,
+    "category_id": "TEST_RUN_2026_01_30",
+    "category_path": "Marketplace_Global_Taxonomy_Test",
+    "sample_size": 30,
+    "examples_pool": {
+      "e1": "High-Performance Gaming Laptops > RTX 4090 Series Gaming Units",
+      "e2": "Laptop Accessories > 65W USB-C Power Adapters (Universal)",
+      "e3": "Footwear > Athletic Shoes > Trail Running Shoes with Carbon Plates",
+      "e4": "Professional Travel Gear > Briefcases > Genuine Leather Toploader",
+      "e5": "Security Storage > Fireproof Protection > Fireproof Document Boxes with Combination Locks",
+      "e6": "Kitchen & Dining > Bakery & Pastry Tools > Non-Stick Silicone Macaron Mats",
+      "e7": "Electronics > Laptops & Computing > Dell XPS 15 Business Laptops",
+      "e8": "Electronics > Laptops & Computing > Apple MacBook Pro M3 Series",
+      "e9": "Electronics > Laptops & Computing > Dell Inspiron 16 Consumer Laptops",
+      "e10": "Electronics > Laptops & Computing > Apple MacBook Air M2",
+      "e11": "Electronics > Laptops & Computing > HP Pavilion & Lenovo IdeaPad Budget Laptops"
+    },
+    "taxonomy_test_nodes": {
+      "tuple_schema": [
+        "root_node",
+        "sub_category",
+        "leaf_node",
+        "depth_level",
+        "example_id",
+        "metadata_rules"
+      ],
+      "rows": [
+        ["Electronics", "Laptops & Computing", "RTX 4090 Series Gaming Units", 3, "e1", "Must include GPU_Model and VRAM_Size"],
+        ["Electronics", "Laptop Accessories", "65W USB-C Power Adapters", 3, "e2", "Standardize: Output_Wattage, Connector_Type"],
+        ["Fashion", "Footwear", "Trail Running Shoes", 3, "e3", "ONDC_Rule: Alpha_Sizes (S,M,L) or UK_Numeric"],
+        ["Luggage", "Professional Travel Gear", "Genuine Leather Toploader Briefcase", 4, "e4", "Rule: Material_Type must be 'Genuine' or 'PU'"],
+        ["Industrial", "Security Storage", "Fireproof Document Boxes", 3, "e5", "Rule: Fire_Rating_Minutes, Lock_Type"],
+        ["Home & Kitchen", "Bakery & Pastry Tools", "Silicone Macaron Mats", 4, "e6", "Standardize: Material, Temp_Range"],
+        ["Industrial", "Security Storage", "Water-Resistant Digital Media Safes", 3, null, "Rule: IP_Rating, Media_Compatibility"],
+        ["Electronics", "Laptops & Computing", "Dell XPS 15 Business Laptops", 3, "e7", "Rule: Screen_Size, RAM_Capacity, SSD_Capacity"],
+        ["Electronics", "Laptops & Computing", "Apple MacBook Pro M3 Series", 3, "e8", "Rule: Chip_Model, Screen_Size, Unified_Memory"],
+        ["Electronics", "Laptops & Computing", "Dell Inspiron 16 Consumer Laptops", 3, "e9", "Rule: Screen_Size, Processor_Type, RAM_Capacity"],
+        ["Electronics", "Laptops & Computing", "Apple MacBook Air M2", 3, "e10", "Rule: Chip_Model, Weight, Battery_Life"],
+        ["Electronics", "Laptops & Computing", "HP Pavilion & Lenovo IdeaPad Budget Laptops", 3, "e11", "Rule: Brand, Screen_Size, Price_Tier"],
+        ["Electronics", "Laptop Components", "DDR5 RAM Modules", 3, null, "Rule: RAM_Capacity, Clock_Speed"],
+        ["Fashion", "Formal Wear", "Slim-Fit Cotton Dress Shirts", 3, null, "ONDC_Rule: Collar_Size, Sleeve_Length"],
+        ["Luggage", "Rolling Luggage", "Carry-on Rolling Office Bags", 3, null, "Rule: Dimension_Compliance_Check"],
+        ["Electronics", "Computing Components", "Internal Replacement Motherboards", 3, null, "Rule: Socket_Type, Form_Factor"],
+        ["Industrial", "Office Supplies", "Accordion-File Wheeled Teacher Totes", 3, null, "Rule: File_Capacity, Wheel_Type"]
+      ]
+    },
+    "embedding_pipeline_configs": {
+      "model": "text-embedding-3-large",
+      "dimensions": 3072,
+      "vector_storage": "Postgres (pgvector)",
+      "normalization_logic": "Unicode + delimiter splitting ('>')"
+    },
+    "confidence": {
+      "score": 1.0,
+      "rationale": "Generated categories cover diverse e-commerce sectors and depth levels to stress-test ETL and vector insertion concurrency."
+    }
+  }

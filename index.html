@@ -1,0 +1,2524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MySellerCentral Chatbot</title>
+    <!-- Marked.js for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #667eea;
+            --primary-dark: #5568d3;
+            --secondary-color: #764ba2;
+            --bg-dark: #1a1a1a;
+            --bg-darker: #0f0f0f;
+            --text-light: #e0e0e0;
+            --text-muted: #888;
+            --success-color: #4ade80;
+            --error-color: #ef4444;
+            --border-color: #3d3d3d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .wallet-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .wallet-display span {
+            font-weight: 600;
+            color: var(--success-color);
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2rem;
+            gap: 2rem;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: rgba(26, 26, 26, 0.6);
+            border-radius: 12px;
+            padding: 1.5rem;
+            height: fit-content;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 120px);
+        }
+
+        .conversation-sidebar {
+            width: 280px;
+            background: rgba(26, 26, 26, 0.6);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 120px);
+        }
+
+        .conversation-sidebar h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .new-chat-btn {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .new-chat-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .conversation-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .conversation-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .conversation-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .conversation-list::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+
+        .conversation-item {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .conversation-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: var(--primary-color);
+        }
+
+        .conversation-item.active {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: var(--primary-color);
+        }
+
+        .conversation-title {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .conversation-actions {
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .conversation-item:hover .conversation-actions {
+            opacity: 1;
+        }
+
+        .conversation-delete-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error-color);
+            border-radius: 4px;
+            color: var(--error-color);
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .conversation-delete-btn:hover {
+            background: rgba(239, 68, 68, 0.4);
+        }
+
+        /* User ID Login Overlay */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 15, 15, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .login-overlay.hidden {
+            display: none;
+        }
+
+        .login-card {
+            background: rgba(26, 26, 26, 0.9);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 3rem;
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-card h2 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-card p {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .login-form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .login-form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .login-form-group input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-light);
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .login-form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .login-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .login-error {
+            color: var(--error-color);
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .login-error.visible {
+            display: block;
+        }
+
+        .skip-login {
+            margin-top: 1rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .skip-login a {
+            color: var(--primary-color);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .skip-login a:hover {
+            color: var(--secondary-color);
+        }
+
+        /* Marketplace Checkboxes */
+        .marketplace-checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .checkbox-label:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: var(--primary-color);
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + span,
+        .checkbox-label:has(input[type="checkbox"]:checked) {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        /* Sidebar marketplace checkboxes - more compact */
+        .sidebar-marketplaces {
+            padding: 0.5rem;
+            gap: 0.5rem;
+        }
+
+        .sidebar-marketplaces .checkbox-label {
+            padding: 0.35rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        /* User Info in Header */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .user-badge .user-id {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error-color);
+            border-radius: 8px;
+            color: var(--error-color);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.4);
+        }
+
+        /* Loading spinner for conversations */
+        .loading-conversations {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(102, 126, 234, 0.2);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .no-conversations {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .no-conversations p {
+            margin-bottom: 1rem;
+        }
+
+        .settings-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .sidebar h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(26, 26, 26, 0.6);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        /* Marketplace integration notice */
+        .integration-notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            margin: 1rem 1.25rem 0;
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(245, 158, 11, 0.06) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            border-radius: 12px;
+            border-left: 4px solid #f59e0b;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .integration-notice-icon {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(245, 158, 11, 0.2);
+            border-radius: 10px;
+            font-size: 1.25rem;
+        }
+
+        .integration-notice-content {
+            flex: 1;
+        }
+
+        .integration-notice-title {
+            font-weight: 600;
+            color: #fbbf24;
+            font-size: 0.95rem;
+            margin-bottom: 0.35rem;
+            letter-spacing: 0.02em;
+        }
+
+        .integration-notice-text {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            opacity: 0.95;
+        }
+
+        .integration-notice-text strong {
+            color: #fcd34d;
+        }
+
+        /* Per-message integration notice (compact) */
+        .message-notice {
+            margin-top: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(251, 191, 36, 0.08);
+            border: 1px solid rgba(251, 191, 36, 0.25);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .message-notice strong {
+            color: #fbbf24;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        .message {
+            display: flex;
+            gap: 0.75rem;
+            animation: slideIn 0.3s ease-out;
+            max-width: 75%;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        }
+
+        .message.assistant .message-avatar {
+            background: var(--bg-dark);
+            border: 2px solid var(--primary-color);
+        }
+
+        .message-content {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+        }
+
+        .message-content p {
+            margin: 0.5rem 0;
+            line-height: 1.6;
+        }
+
+        .message-content p:first-child {
+            margin-top: 0;
+        }
+
+        .message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Markdown styling for assistant messages */
+        .message-content.markdown-content {
+            line-height: 1.6;
+        }
+
+        .message-content.markdown-content h1,
+        .message-content.markdown-content h2,
+        .message-content.markdown-content h3,
+        .message-content.markdown-content h4 {
+            margin: 1rem 0 0.5rem 0;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .message-content.markdown-content h1:first-child,
+        .message-content.markdown-content h2:first-child,
+        .message-content.markdown-content h3:first-child,
+        .message-content.markdown-content h4:first-child {
+            margin-top: 0;
+        }
+
+        .message-content.markdown-content p {
+            margin: 0.75rem 0;
+        }
+
+        .message-content.markdown-content p:first-child {
+            margin-top: 0;
+        }
+
+        .message-content.markdown-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-content.markdown-content ul,
+        .message-content.markdown-content ol {
+            margin: 0.75rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .message-content.markdown-content li {
+            margin: 0.5rem 0;
+        }
+
+        .message-content.markdown-content strong {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .message-content.markdown-content em {
+            font-style: italic;
+            color: var(--text-light);
+        }
+
+        .message-content.markdown-content code {
+            background: rgba(102, 126, 234, 0.2);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: var(--primary-color);
+        }
+
+        .message-content.markdown-content pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .message-content.markdown-content pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .message-content.markdown-content blockquote {
+            border-left: 3px solid var(--primary-color);
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .message-content.markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .message-content.markdown-content table th,
+        .message-content.markdown-content table td {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .message-content.markdown-content table th {
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .message-content.markdown-content hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 1.5rem 0;
+        }
+
+        .loading-indicator {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .loading-dots {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .loading-dots span {
+            width: 6px;
+            height: 6px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .agent-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 2px solid var(--primary-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .agent-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .agent-card .cost {
+            color: var(--success-color);
+            font-weight: 600;
+            margin: 0.5rem 0;
+        }
+
+        .agent-card .marketplace {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+
+        .agent-card .features {
+            list-style: none;
+            padding: 0;
+            margin: 1rem 0 0 0;
+        }
+
+        .agent-card .features li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .agent-card .features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .quick-action-btn {
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid var(--primary-color);
+            color: var(--text-light);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .quick-action-btn:hover {
+            background: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            color: var(--error-color);
+        }
+
+        .chat-input-container {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            background: rgba(26, 26, 26, 0.8);
+        }
+
+        .chat-form {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 1rem 1.25rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-light);
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .send-button {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-muted);
+        }
+
+        .welcome-message h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .wallet-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                padding: 1rem;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+
+            .message {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Overlay -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-card">
+            <h2>🤖 MySellerCentral</h2>
+            <p>Enter your details to get started</p>
+            <div class="login-form-group">
+                <label for="loginUserIdInput">👤 User ID</label>
+                <input type="text" id="loginUserIdInput" placeholder="e.g., user_789" autocomplete="off">
+            </div>
+            <div class="login-form-group">
+                <label for="loginUsernameInput">📝 Username</label>
+                <input type="text" id="loginUsernameInput" placeholder="e.g., John Doe" autocomplete="off">
+            </div>
+            <div class="login-form-group">
+                <label for="loginMarketplacesInput">🏪 Marketplaces Registered</label>
+                <div class="marketplace-checkboxes" id="marketplaceCheckboxes">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="marketplace" value="amazon.in"> Amazon.in
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="marketplace" value="amazon.com"> Amazon.com
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="marketplace" value="flipkart.com"> Flipkart
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="marketplace" value="meesho.com"> Meesho
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="marketplace" value="Myntra"> Myntra
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="marketplace" value="JioMart"> JioMart
+                    </label>
+                </div>
+            </div>
+            <div class="login-form-group">
+                <label for="loginWalletBalanceInput">💰 Wallet Balance</label>
+                <input type="number" id="loginWalletBalanceInput" placeholder="e.g., 1000" min="0" step="0.01" autocomplete="off">
+            </div>
+            <button class="login-btn" id="loginBtn">Load My Conversations</button>
+            <div class="login-error" id="loginError"></div>
+            <div class="skip-login">
+                <a id="skipLoginLink">Skip and start a new chat</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>🤖 MySellerCentral Chatbot</h1>
+        <div class="user-info" id="userInfo" style="display: none;">
+            <div class="user-badge">
+                <span>👤</span>
+                <span class="user-id" id="headerUserId"></span>
+            </div>
+            <button class="logout-btn" id="logoutBtn">Change User</button>
+        </div>
+        <div class="wallet-display">
+            <span>💰</span>
+            <span id="walletBalance">--</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="conversation-sidebar">
+            <button class="new-chat-btn" id="newChatBtn">
+                <span>+</span>
+                <span>New Chat</span>
+            </button>
+            
+            <h3>💬 Chat History</h3>
+            <div class="conversation-list" id="conversationList">
+                <!-- Conversations will be dynamically added here -->
+            </div>
+
+            <div class="settings-section">
+                <h3 style="margin-bottom: 1rem;">⚙️ Settings</h3>
+                
+                <div class="form-group">
+                    <label for="languageSelect">🌐 Language</label>
+                    <select id="languageSelect">
+                        <option value="English">English</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="userIdInput">👤 User ID</label>
+                    <input type="text" id="userIdInput" value="user_789" placeholder="Enter user ID">
+                </div>
+
+                <div class="form-group">
+                    <label for="usernameInput">📝 Username</label>
+                    <input type="text" id="usernameInput" placeholder="Enter username">
+                </div>
+
+                <div class="form-group">
+                    <label for="loginLocationInput">🌍 Login Location (Testing)</label>
+                    <select id="loginLocationInput">
+                        <option value="">-- Select Location --</option>
+                        <option value="India">India (INR ₹)</option>
+                        <option value="US">US (USD $)</option>
+                        <option value="Other">Other (USD $)</option>
+                    </select>
+                    <small style="color: var(--text-muted); font-size: 0.85rem; display: block; margin-top: 0.25rem;">
+                        Determines currency: India → ₹ INR, Others → $ USD
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label>🏪 Marketplaces</label>
+                    <div class="marketplace-checkboxes sidebar-marketplaces" id="sidebarMarketplaceCheckboxes">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="sidebar_marketplace" value="amazon.in"> Amazon.in
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="sidebar_marketplace" value="amazon.com"> Amazon.com
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="sidebar_marketplace" value="Flipkart"> Flipkart
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="sidebar_marketplace" value="Meesho"> Meesho
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="sidebar_marketplace" value="Myntra"> Myntra
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="sidebar_marketplace" value="JioMart"> JioMart
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="walletBalanceInput">💰 Wallet Balance</label>
+                    <input type="number" id="walletBalanceInput" placeholder="Enter wallet balance" min="0" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label for="conversationIdInput">💬 Load Conversation by ID</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="conversationIdInput" placeholder="Enter conversation ID (e.g., conv_...)" style="flex: 1;">
+                        <button id="loadConversationBtn" class="send-button" style="padding: 0.75rem 1rem; font-size: 0.9rem;">Load</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-area">
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <h2>👋 Welcome!</h2>
+                    <p>How can I help you today with MySellerCentral?</p>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <form id="chatForm" class="chat-form">
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        class="chat-input"
+                        placeholder="Type your message..."
+                        autocomplete="off"
+                    />
+                    <button type="submit" id="sendButton" class="send-button">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        // Automatically detect the hostname to support network access
+        // If accessed via IP address, use that IP; otherwise use localhost
+        const currentHost = window.location.hostname;
+        const API_BASE_URL = `http://${currentHost}:8502`;
+        const API_ENDPOINTS = {
+            health: `${API_BASE_URL}/health`,
+            sendMessage: `${API_BASE_URL}/api/chat/message`,
+            getMessages: (conversationId) => `${API_BASE_URL}/api/chat/conversation/${conversationId}/messages`,
+            getUserConversations: (userId) => `${API_BASE_URL}/api/user/${userId}/conversations`
+        };
+
+        // State management
+        const state = {
+            userId: null, // Current logged in user
+            username: null, // User's display name
+            loginLocation: null, // User's login location (India, US, Other) - for currency detection
+            marketplacesRegistered: [], // List of marketplaces the user is registered on
+            userWalletBalance: null, // User-entered wallet balance (for payload)
+            conversationId: null,
+            walletBalance: null, // Wallet balance from API response
+            currencySymbol: '$', // Default to USD, will be updated from API response
+            conversations: [], // Array of conversation objects from API
+            currentConversation: null, // Current conversation data
+            isLoggedIn: false
+        };
+
+        // DOM Elements
+        const chatForm = document.getElementById('chatForm');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const chatMessages = document.getElementById('chatMessages');
+        const walletBalanceEl = document.getElementById('walletBalance');
+        const languageSelect = document.getElementById('languageSelect');
+        const userIdInput = document.getElementById('userIdInput');
+        const newChatBtn = document.getElementById('newChatBtn');
+        const conversationList = document.getElementById('conversationList');
+        const conversationIdInput = document.getElementById('conversationIdInput');
+        const loadConversationBtn = document.getElementById('loadConversationBtn');
+        const usernameInput = document.getElementById('usernameInput');
+        const loginLocationInput = document.getElementById('loginLocationInput');
+        const sidebarMarketplaceCheckboxes = document.getElementById('sidebarMarketplaceCheckboxes');
+        const walletBalanceInput = document.getElementById('walletBalanceInput');
+        
+        // Login elements
+        const loginOverlay = document.getElementById('loginOverlay');
+        const loginUserIdInput = document.getElementById('loginUserIdInput');
+        const loginUsernameInput = document.getElementById('loginUsernameInput');
+        const marketplaceCheckboxes = document.getElementById('marketplaceCheckboxes');
+        const loginWalletBalanceInput = document.getElementById('loginWalletBalanceInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
+        const skipLoginLink = document.getElementById('skipLoginLink');
+        const userInfo = document.getElementById('userInfo');
+        const headerUserId = document.getElementById('headerUserId');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        // Initialize
+        function init() {
+            // Check API health
+            checkApiHealth();
+
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Check if user was previously logged in
+            const savedUserId = localStorage.getItem('currentUserId');
+            if (savedUserId) {
+                // Restore saved user info to form fields before auto-login
+                const savedUsername = localStorage.getItem('currentUsername');
+                const savedMarketplaces = localStorage.getItem('currentMarketplaces');
+                const savedWalletBalance = localStorage.getItem('currentWalletBalance');
+                
+                loginUserIdInput.value = savedUserId;
+                if (savedUsername) loginUsernameInput.value = savedUsername;
+                if (savedWalletBalance) loginWalletBalanceInput.value = savedWalletBalance;
+                
+                // Restore marketplace checkboxes
+                if (savedMarketplaces) {
+                    try {
+                        const marketplaces = JSON.parse(savedMarketplaces);
+                        const checkboxes = marketplaceCheckboxes.querySelectorAll('input[name="marketplace"]');
+                        checkboxes.forEach(cb => {
+                            cb.checked = marketplaces.includes(cb.value);
+                        });
+                    } catch (e) {
+                        console.error('Error restoring marketplaces:', e);
+                    }
+                }
+                
+                // Auto-login with saved user ID
+                loginWithUserId(savedUserId);
+            } else {
+                // Show login overlay
+                showLoginOverlay();
+            }
+        }
+        
+        // Show login overlay
+        function showLoginOverlay() {
+            loginOverlay.classList.remove('hidden');
+            loginUserIdInput.focus();
+        }
+        
+        // Hide login overlay
+        function hideLoginOverlay() {
+            loginOverlay.classList.add('hidden');
+        }
+        
+        // Get selected marketplaces from checkboxes
+        function getSelectedMarketplaces() {
+            const checkboxes = marketplaceCheckboxes.querySelectorAll('input[name="marketplace"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        // Login with user ID
+        async function loginWithUserId(userId) {
+            if (!userId || !userId.trim()) {
+                showLoginError('Please enter a valid User ID');
+                return;
+            }
+            
+            userId = userId.trim();
+            
+            // Get additional user info from form
+            const username = loginUsernameInput.value.trim() || null;
+            const marketplaces = getSelectedMarketplaces();
+            const walletBalance = loginWalletBalanceInput.value ? parseFloat(loginWalletBalanceInput.value) : null;
+            
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Loading...';
+            hideLoginError();
+            
+            try {
+                // Fetch user conversations from API
+                const response = await fetch(API_ENDPOINTS.getUserConversations(userId), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('User conversations retrieved:', data);
+                
+                if (data.success && data.data) {
+                    // Update state
+                    state.userId = userId;
+                    state.username = username;
+                    state.marketplacesRegistered = marketplaces;
+                    state.userWalletBalance = walletBalance;
+                    state.isLoggedIn = true;
+                    state.conversations = data.data.conversations || [];
+                    
+                    // Save user info to localStorage
+                    localStorage.setItem('currentUserId', userId);
+                    localStorage.setItem('currentUsername', username || '');
+                    localStorage.setItem('currentMarketplaces', JSON.stringify(marketplaces));
+                    localStorage.setItem('currentWalletBalance', walletBalance !== null ? walletBalance.toString() : '');
+                    
+                    // Update UI
+                    hideLoginOverlay();
+                    userIdInput.value = userId;
+                    usernameInput.value = username || '';
+                    walletBalanceInput.value = walletBalance !== null ? walletBalance : '';
+                    headerUserId.textContent = username || userId;
+                    userInfo.style.display = 'flex';
+                    
+                    // Update sidebar marketplace checkboxes
+                    updateSidebarMarketplaces(marketplaces);
+                    
+                    // Update wallet display with user-entered balance
+                    if (walletBalance !== null) {
+                        state.walletBalance = walletBalance;
+                        updateWalletDisplay();
+                    }
+                    
+                    // Render conversation list
+                    renderConversationList();
+                    
+                    // Load most recent conversation or show welcome
+                    if (state.conversations.length > 0) {
+                        const mostRecent = state.conversations[0]; // Already sorted by API
+                        loadConversationFromData(mostRecent);
+                    } else {
+                        createNewConversation();
+                    }
+                } else {
+                    throw new Error('Invalid response format');
+                }
+                
+            } catch (error) {
+                console.error('Error loading user conversations:', error);
+                // If API fails (e.g., no conversations), still allow login but with empty state
+                state.userId = userId;
+                state.username = username;
+                state.marketplacesRegistered = marketplaces;
+                state.userWalletBalance = walletBalance;
+                state.isLoggedIn = true;
+                state.conversations = [];
+                
+                localStorage.setItem('currentUserId', userId);
+                localStorage.setItem('currentUsername', username || '');
+                localStorage.setItem('currentMarketplaces', JSON.stringify(marketplaces));
+                localStorage.setItem('currentWalletBalance', walletBalance !== null ? walletBalance.toString() : '');
+                
+                hideLoginOverlay();
+                userIdInput.value = userId;
+                usernameInput.value = username || '';
+                walletBalanceInput.value = walletBalance !== null ? walletBalance : '';
+                headerUserId.textContent = username || userId;
+                userInfo.style.display = 'flex';
+                
+                // Update sidebar marketplace checkboxes
+                updateSidebarMarketplaces(marketplaces);
+                
+                // Update wallet display with user-entered balance
+                if (walletBalance !== null) {
+                    state.walletBalance = walletBalance;
+                    updateWalletDisplay();
+                }
+                
+                renderConversationList();
+                createNewConversation();
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Load My Conversations';
+            }
+        }
+
+        // Update sidebar marketplace checkboxes
+        function updateSidebarMarketplaces(marketplaces) {
+            const checkboxes = sidebarMarketplaceCheckboxes.querySelectorAll('input[name="sidebar_marketplace"]');
+            checkboxes.forEach(cb => {
+                cb.checked = marketplaces.includes(cb.value);
+            });
+        }
+
+        // Get selected marketplaces from sidebar
+        function getSidebarSelectedMarketplaces() {
+            const checkboxes = sidebarMarketplaceCheckboxes.querySelectorAll('input[name="sidebar_marketplace"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+        
+        // Skip login and start fresh
+        function skipLogin() {
+            // Get any info entered in the form even when skipping
+            const username = loginUsernameInput.value.trim() || null;
+            const marketplaces = getSelectedMarketplaces();
+            const walletBalance = loginWalletBalanceInput.value ? parseFloat(loginWalletBalanceInput.value) : null;
+            
+            state.userId = 'user_guest_' + Date.now();
+            state.username = username;
+            state.marketplacesRegistered = marketplaces;
+            state.userWalletBalance = walletBalance;
+            state.isLoggedIn = true;
+            state.conversations = [];
+            
+            userIdInput.value = state.userId;
+            usernameInput.value = username || '';
+            walletBalanceInput.value = walletBalance !== null ? walletBalance : '';
+            headerUserId.textContent = username || state.userId;
+            userInfo.style.display = 'flex';
+            
+            // Update sidebar marketplace checkboxes
+            updateSidebarMarketplaces(marketplaces);
+            
+            // Update wallet display with user-entered balance
+            if (walletBalance !== null) {
+                state.walletBalance = walletBalance;
+                updateWalletDisplay();
+            }
+            
+            hideLoginOverlay();
+            renderConversationList();
+            createNewConversation();
+        }
+        
+        // Logout / Change user
+        function logout() {
+            // Clear state
+            state.userId = null;
+            state.username = null;
+            state.marketplacesRegistered = [];
+            state.userWalletBalance = null;
+            state.isLoggedIn = false;
+            state.conversations = [];
+            state.conversationId = null;
+            state.currentConversation = null;
+            state.walletBalance = null;
+            
+            // Clear localStorage
+            localStorage.removeItem('currentUserId');
+            localStorage.removeItem('currentUsername');
+            localStorage.removeItem('currentMarketplaces');
+            localStorage.removeItem('currentWalletBalance');
+            
+            // Reset UI
+            userInfo.style.display = 'none';
+            walletBalanceEl.textContent = '--';
+            clearChatMessages();
+            conversationList.innerHTML = '';
+            
+            // Clear login form fields
+            loginUserIdInput.value = '';
+            loginUsernameInput.value = '';
+            loginWalletBalanceInput.value = '';
+            const checkboxes = marketplaceCheckboxes.querySelectorAll('input[name="marketplace"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            
+            // Show login overlay
+            showLoginOverlay();
+        }
+        
+        // Show login error
+        function showLoginError(message) {
+            loginError.textContent = message;
+            loginError.classList.add('visible');
+        }
+        
+        // Hide login error
+        function hideLoginError() {
+            loginError.classList.remove('visible');
+        }
+        
+        // Load conversation from API data
+        function loadConversationFromData(conversationData) {
+            state.conversationId = conversationData.conversationId;
+            state.currentConversation = conversationData;
+            
+            renderConversationList();
+            clearChatMessages();
+            
+            // Load messages from the conversation data
+            if (conversationData.messages && conversationData.messages.length > 0) {
+                conversationData.messages.forEach(msg => {
+                    const role = msg.role; // 'user' or 'assistant'
+                    const content = msg.content;
+                    
+                    // Extract components for assistant messages
+                    let components = null;
+                    if (role === 'assistant') {
+                        components = {};
+                        if (msg.agentCard) components.agentCard = msg.agentCard;
+                        if (msg.suggestedAgents) components.suggestedAgents = msg.suggestedAgents;
+                        if (msg.quickActions) components.quickActions = msg.quickActions;
+                        if (msg.analyticsData) components.analyticsData = msg.analyticsData;
+                        // If no components, set to null
+                        const hasAnalytics = components.analyticsData && (components.analyticsData.table_data?.length > 0 || components.analyticsData.visualization);
+                        if (!components.agentCard && (!components.suggestedAgents || components.suggestedAgents.length === 0) && (!components.quickActions || components.quickActions.length === 0) && !hasAnalytics) {
+                            components = null;
+                        }
+                    }
+
+                    addMessageToUI(role, content, components, null);
+                });
+            } else {
+                showWelcomeMessage();
+            }
+        }
+        
+        // Refresh conversations from API
+        async function refreshConversations() {
+            if (!state.userId) return;
+            
+            try {
+                const response = await fetch(API_ENDPOINTS.getUserConversations(state.userId), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.data) {
+                        state.conversations = data.data.conversations || [];
+                        renderConversationList();
+                    }
+                }
+            } catch (error) {
+                console.error('Error refreshing conversations:', error);
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Form submission
+            chatForm.addEventListener('submit', handleFormSubmit);
+
+            // Enter key in input (prevent default form submission)
+            messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleFormSubmit(e);
+                }
+            });
+
+            // New chat button
+            newChatBtn.addEventListener('click', () => {
+                createNewConversation();
+            });
+
+            // Load conversation by ID button
+            loadConversationBtn.addEventListener('click', () => {
+                const conversationId = conversationIdInput.value.trim();
+                if (conversationId) {
+                    loadConversationById(conversationId);
+                } else {
+                    alert('Please enter a conversation ID');
+                }
+            });
+
+            // Allow Enter key in conversationId input
+            conversationIdInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const conversationId = conversationIdInput.value.trim();
+                    if (conversationId) {
+                        loadConversationById(conversationId);
+                    }
+                }
+            });
+            
+            // Login button
+            loginBtn.addEventListener('click', () => {
+                const userId = loginUserIdInput.value.trim();
+                loginWithUserId(userId);
+            });
+            
+            // Enter key in login input
+            loginUserIdInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const userId = loginUserIdInput.value.trim();
+                    loginWithUserId(userId);
+                }
+            });
+            
+            // Skip login link
+            skipLoginLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                skipLogin();
+            });
+            
+            // Logout button
+            logoutBtn.addEventListener('click', () => {
+                logout();
+            });
+            
+            // User ID input change (when manually changed in sidebar)
+            userIdInput.addEventListener('change', () => {
+                const newUserId = userIdInput.value.trim();
+                if (newUserId && newUserId !== state.userId) {
+                    // Reload with new user ID
+                    loginWithUserId(newUserId);
+                }
+            });
+
+            // Username input change
+            usernameInput.addEventListener('change', () => {
+                const newUsername = usernameInput.value.trim() || null;
+                state.username = newUsername;
+                headerUserId.textContent = newUsername || state.userId;
+                localStorage.setItem('currentUsername', newUsername || '');
+            });
+
+            // Login location input change
+            loginLocationInput.addEventListener('change', () => {
+                const newLocation = loginLocationInput.value.trim() || null;
+                state.loginLocation = newLocation;
+                console.log('Login location updated:', newLocation);
+            });
+
+            // Wallet balance input change
+            walletBalanceInput.addEventListener('change', () => {
+                const newBalance = walletBalanceInput.value ? parseFloat(walletBalanceInput.value) : null;
+                state.userWalletBalance = newBalance;
+                if (newBalance !== null) {
+                    state.walletBalance = newBalance;
+                    updateWalletDisplay();
+                }
+                localStorage.setItem('currentWalletBalance', newBalance !== null ? newBalance.toString() : '');
+            });
+
+            // Sidebar marketplace checkboxes change
+            sidebarMarketplaceCheckboxes.addEventListener('change', () => {
+                state.marketplacesRegistered = getSidebarSelectedMarketplaces();
+                localStorage.setItem('currentMarketplaces', JSON.stringify(state.marketplacesRegistered));
+            });
+        }
+
+        // Handle form submission
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const message = messageInput.value.trim();
+            if (!message) return false;
+
+            // Add user message to UI
+            addMessage('user', message);
+            messageInput.value = '';
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
+
+            // Show loading indicator
+            const loadingId = showLoadingIndicator();
+
+            try {
+                // Prepare request
+                // Send "new" if no conversationId, or the existing one
+                // Backend will create a new conversation if conversationId is null, empty, or "new"
+                const currentUserId = state.userId || userIdInput.value.trim() || 'user_789';
+                const loginLocation = loginLocationInput.value.trim() || state.loginLocation || null;
+                const requestBody = {
+                    message: message,
+                    conversationId: state.conversationId || "new",
+                    messageType: "text",
+                    context: {
+                        userId: currentUserId,
+                        username: state.username || null,
+                        loginLocation: loginLocation, // New field for currency detection
+                        marketplaces_registered: state.marketplacesRegistered || [],
+                        wallet_balance: state.userWalletBalance !== null ? state.userWalletBalance : null,
+                        previousIntent: null,
+                        clientInfo: {
+                            device: /Mobile/.test(navigator.userAgent) ? "mobile" : "desktop",
+                            appVersion: "1.0.0",
+                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                            platform: "web",
+                            userAgent: navigator.userAgent,
+                            country: loginLocation === "India" ? "IN" : (loginLocation === "US" ? "US" : null)
+                        },
+                        metadata: {}
+                    },
+                    language: languageSelect.value
+                };
+
+                console.log('Sending request:', requestBody);
+
+                // Send request
+                const response = await fetch(API_ENDPOINTS.sendMessage, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                // Remove loading indicator
+                removeLoadingIndicator(loadingId);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log('Response received:', data);
+
+                // Handle response
+                if (data.success && data.data) {
+                    const responseData = data.data;
+                    
+                    // IMPORTANT: Update conversationId from backend response
+                    // Backend creates/manages conversationId, so we must use the one returned
+                    if (responseData.conversationId) {
+                        const backendConversationId = responseData.conversationId;
+                        
+                        // If this is a new conversation (state.conversationId was null/empty/"new"), create it
+                        const currentId = state.conversationId;
+                        if (!currentId || currentId === "new" || currentId !== backendConversationId) {
+                            // Update state
+                            state.conversationId = backendConversationId;
+                            
+                            // Check if conversation already exists in our list
+                            let conversation = state.conversations.find(c => c.conversationId === backendConversationId);
+                            if (!conversation) {
+                                // Create new conversation entry locally
+                                conversation = {
+                                    conversationId: backendConversationId,
+                                    userId: state.userId || currentUserId,
+                                    createdAt: new Date().toISOString(),
+                                    lastMessageAt: new Date().toISOString(),
+                                    messages: []
+                                };
+                                state.conversations.unshift(conversation); // Add to beginning
+                                renderConversationList();
+                            }
+                            state.currentConversation = conversation;
+                        } else {
+                            // Update existing conversation's lastMessageAt
+                            if (state.currentConversation) {
+                                state.currentConversation.lastMessageAt = new Date().toISOString();
+                                renderConversationList();
+                            }
+                        }
+                        
+                        // Refresh conversations list from API (async, don't wait)
+                        refreshConversations();
+                    }
+                    
+                    // Extract currency symbol from components if available
+                    if (responseData.components) {
+                        if (responseData.components.agentCard && responseData.components.agentCard.currencySymbol) {
+                            state.currencySymbol = responseData.components.agentCard.currencySymbol;
+                        } else if (responseData.components.suggestedAgents && responseData.components.suggestedAgents.length > 0) {
+                            const firstAgent = responseData.components.suggestedAgents[0];
+                            if (firstAgent.currencySymbol) {
+                                state.currencySymbol = firstAgent.currencySymbol;
+                            }
+                        }
+                    }
+                    
+                    // Update wallet balance
+                    if (responseData.walletBalance !== undefined) {
+                        state.walletBalance = responseData.walletBalance;
+                        updateWalletDisplay();
+                    }
+
+                    // Add assistant message
+                    addMessage('assistant', responseData.reply, responseData.components, responseData.walletBalance, responseData.notice || null);
+                } else if (data.error) {
+                    // Handle error response
+                    showErrorMessage(data.error);
+                    if (data.error.walletBalance !== undefined) {
+                        state.walletBalance = data.error.walletBalance;
+                        updateWalletDisplay();
+                    }
+                } else {
+                    throw new Error('Invalid response format');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                removeLoadingIndicator(loadingId);
+                addMessage('assistant', `❌ Error: ${error.message}`, null, state.walletBalance);
+            } finally {
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send';
+            }
+
+            return false;
+        }
+
+        // Add message to chat
+        function addMessage(role, content, components = null, walletBalance = null, notice = null) {
+            // Remove welcome message if present
+            const welcomeMsg = chatMessages.querySelector('.welcome-message');
+            if (welcomeMsg) {
+                welcomeMsg.remove();
+            }
+
+            // Update current conversation messages locally (for UI, not persisted)
+            if (state.currentConversation) {
+                if (!state.currentConversation.messages) {
+                    state.currentConversation.messages = [];
+                }
+                state.currentConversation.messages.push({
+                    role: role,
+                    content: content,
+                    components: components,
+                    walletBalance: walletBalance,
+                    notice: notice,
+                    timestamp: new Date().toISOString()
+                });
+                state.currentConversation.lastMessageAt = new Date().toISOString();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const avatar = role === 'user' ? '🧑‍💼' : '🤖';
+            
+            const escapeNotice = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const messageNoticeHtml = (role === 'assistant' && notice)
+                ? `<div class="message-notice" role="status">🚧 ${escapeNotice(notice)}</div>`
+                : '';
+
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content ${role === 'assistant' ? 'markdown-content' : ''}">
+                    ${messageNoticeHtml}
+                    ${formatMessageContent(content, role)}
+                    ${components ? renderComponents(components) : ''}
+                </div>
+            `;
+
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // Format message content (handle markdown for assistant, plain text for user)
+        function formatMessageContent(content, role = 'user') {
+            // Normalize to a safe string so markdown parser doesn't crash
+            if (content === null || content === undefined) {
+                content = '';
+            } else if (typeof content !== 'string') {
+                try {
+                    // Prefer readable JSON if it's an object/array
+                    content = JSON.stringify(content, null, 2);
+                } catch (e) {
+                    content = String(content);
+                }
+            }
+
+            if (role === 'assistant') {
+                // Render markdown for assistant messages
+                if (typeof marked !== 'undefined') {
+                    // Configure marked options (set once, used for all parsing)
+                    if (!marked.getDefaults || !marked.getDefaults().configured) {
+                        marked.setOptions({
+                            breaks: true, // Convert line breaks to <br>
+                            gfm: true, // GitHub Flavored Markdown
+                            headerIds: false, // Disable header IDs for cleaner HTML
+                            mangle: false // Don't mangle email addresses
+                        });
+                        // Mark as configured to avoid re-setting
+                        if (marked.getDefaults) {
+                            marked.getDefaults().configured = true;
+                        }
+                    }
+                    
+                    try {
+                        // Use marked.parse() (v4+) or marked() (v3)
+                        const parsed = typeof marked.parse === 'function' 
+                            ? marked.parse(content) 
+                            : marked(content);
+                        return parsed;
+                    } catch (e) {
+                        console.error('Markdown parsing error:', e);
+                        // Fallback to plain text if markdown parsing fails
+                        return content
+                            .split('\n')
+                            .map(line => line.trim() ? `<p>${escapeHtml(line)}</p>` : '')
+                            .join('');
+                    }
+                } else {
+                    // Fallback if marked.js is not loaded
+                    console.warn('Marked.js not loaded, using plain text formatting');
+                    return content
+                        .split('\n')
+                        .map(line => line.trim() ? `<p>${escapeHtml(line)}</p>` : '')
+                        .join('');
+                }
+            } else {
+                // Plain text formatting for user messages
+                return content
+                    .split('\n')
+                    .map(line => line.trim() ? `<p>${escapeHtml(line)}</p>` : '')
+                    .join('');
+            }
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Handle quick action based on action type
+        function handleQuickAction(action, agentId = null, components = null) {
+            if (!action) return;
+            
+            // Helper function to validate wallet balance for agent actions
+            function validateWalletForAgent(agentId, components) {
+                if (!agentId || !components) return true; // No validation if no agentId
+                
+                // Find the agent card to get the cost
+                let agentCard = null;
+                if (components.agentCard && components.agentCard.agentId === agentId) {
+                    agentCard = components.agentCard;
+                } else if (components.suggestedAgents) {
+                    agentCard = components.suggestedAgents.find(card => card.agentId === agentId);
+                }
+                
+                if (!agentCard || !agentCard.cost) return true; // No cost means no validation needed
+                
+                // Get current wallet balance
+                const currentBalance = state.walletBalance !== null ? parseFloat(state.walletBalance) : 0;
+                const requiredAmount = parseFloat(agentCard.cost);
+                const currencySymbol = agentCard.currencySymbol || state.currencySymbol || '$';
+                
+                // Check if balance is sufficient
+                if (currentBalance < requiredAmount) {
+                    // Format amount for error message
+                    const formattedAmount = currencySymbol === '$' 
+                        ? `${currencySymbol}${requiredAmount.toFixed(2)}`
+                        : `${currencySymbol}${Math.floor(requiredAmount)}`;
+                    
+                    const shortfall = requiredAmount - currentBalance;
+                    const formattedShortfall = currencySymbol === '$'
+                        ? `${currencySymbol}${shortfall.toFixed(2)}`
+                        : `${currencySymbol}${Math.floor(shortfall)}`;
+                    
+                    // Show error message
+                    const username = state.username || 'User';
+                    const errorMessage = `Insufficient balance ${username}. You need ${formattedAmount} to use this agent. Your current balance is ${currencySymbol === '$' ? `${currencySymbol}${currentBalance.toFixed(2)}` : `${currencySymbol}${Math.floor(currentBalance)}`}. Please top up ${formattedShortfall} to proceed.`;
+                    addMessage('assistant', `❌ ${errorMessage}`, null, state.walletBalance);
+                    
+                    return false; // Validation failed
+                }
+                
+                return true; // Validation passed
+            }
+            
+            switch (action.actionType) {
+                case 'message':
+                    // Send a message
+                    if (action.message) {
+                        messageInput.value = action.message;
+                        handleFormSubmit(new Event('submit'));
+                    }
+                    break;
+                    
+                case 'launch_agent':
+                    // Launch the agent directly
+                    if (agentId && components) {
+                        // Validate wallet balance first
+                        if (!validateWalletForAgent(agentId, components)) {
+                            return; // Stop if validation fails
+                        }
+                        
+                        // Find the agent name from components to create a better message
+                        let agentName = agentId;
+                        if (components.agentCard && components.agentCard.agentId === agentId) {
+                            agentName = components.agentCard.name;
+                        } else if (components.suggestedAgents) {
+                            const agentCard = components.suggestedAgents.find(card => card.agentId === agentId);
+                            if (agentCard) {
+                                agentName = agentCard.name;
+                            }
+                        }
+                        // Send a message to launch the agent
+                        messageInput.value = `I want to use ${agentName}`;
+                        handleFormSubmit(new Event('submit'));
+                    } else if (action.message) {
+                        // Fallback to message if agentId not provided
+                        messageInput.value = action.message;
+                        handleFormSubmit(new Event('submit'));
+                    }
+                    break;
+                    
+                case 'url':
+                    // Navigate to URL - but validate wallet if this is an agent action
+                    if (action.url) {
+                        // If this is an agent-related URL action, validate wallet first
+                        if (agentId && !validateWalletForAgent(agentId, components)) {
+                            return; // Stop if validation fails
+                        }
+                        // Proceed with opening URL
+                        window.open(action.url, '_blank');
+                    }
+                    break;
+                    
+                case 'deep_link':
+                    // Handle deep link (could trigger app navigation or custom handler)
+                    if (action.url) {
+                        // For web, treat deep_link similar to URL
+                        // In a mobile app, this would trigger native navigation
+                        window.location.href = action.url;
+                    } else if (action.message) {
+                        // Fallback to message
+                        messageInput.value = action.message;
+                        handleFormSubmit(new Event('submit'));
+                    }
+                    break;
+                    
+                default:
+                    // Fallback to message if action type is unknown
+                    if (action.message) {
+                        messageInput.value = action.message;
+                        handleFormSubmit(new Event('submit'));
+                    }
+            }
+        }
+
+        // Format currency amount based on currency symbol
+        function formatCurrencyAmount(amount, currencySymbol) {
+            if (currencySymbol === '$') {
+                // USD: Show 2 decimal places
+                return currencySymbol + parseFloat(amount).toFixed(2);
+            } else {
+                // INR or others: Show no decimal places (whole numbers)
+                return currencySymbol + parseInt(amount);
+            }
+        }
+
+        // Render components (agent cards, quick actions, etc.)
+        function renderComponents(components) {
+            let html = '';
+
+            // Agent Card (primary agent)
+            if (components.agentCard) {
+                const card = components.agentCard;
+                const cardId = `agent-card-${card.agentId || 'primary'}`;
+                const currencySymbol = card.currencySymbol || '$';
+                html += `
+                    <div class="agent-card" data-agent-id="${card.agentId || 'primary'}">
+                        <h3>${card.icon} ${escapeHtml(card.name)}</h3>
+                        <div class="cost">Cost: ${formatCurrencyAmount(card.cost, currencySymbol)} | After: ${formatCurrencyAmount(card.walletAfter, currencySymbol)}</div>
+                        ${card.marketplace && card.marketplace.length > 0 ? 
+                            `<div class="marketplace">Marketplace: ${card.marketplace.join(', ')}</div>` : ''}
+                        ${card.features && card.features.length > 0 ? `
+                            <ul class="features">
+                                ${card.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+                        ${card.quickActions && card.quickActions.length > 0 ? `
+                            <div class="quick-actions" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0;">
+                                ${card.quickActions.map((action, index) => `
+                                    <button class="quick-action-btn" data-agent-id="${card.agentId || 'primary'}" data-action-index="${index}">
+                                        ${action.icon || ''} ${escapeHtml(action.label)}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            // Suggested Agents (all other agents)
+            if (components.suggestedAgents && components.suggestedAgents.length > 0) {
+                html += '<div style="margin-top: 1rem;"><h4 style="color: var(--primary-color); margin-bottom: 1rem;"></h4>';
+                components.suggestedAgents.forEach((card) => {
+                    const currencySymbol = card.currencySymbol || '$';
+                    html += `
+                        <div class="agent-card" style="margin-top: 1rem;" data-agent-id="${card.agentId || ''}">
+                            <h3>${card.icon} ${escapeHtml(card.name)}</h3>
+                            <div class="cost">Cost: ${formatCurrencyAmount(card.cost, currencySymbol)} | After: ${formatCurrencyAmount(card.walletAfter, currencySymbol)}</div>
+                            ${card.marketplace && card.marketplace.length > 0 ? 
+                                `<div class="marketplace">Marketplace: ${card.marketplace.join(', ')}</div>` : ''}
+                            ${card.features && card.features.length > 0 ? `
+                                <ul class="features">
+                                    ${card.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}
+                                </ul>
+                            ` : ''}
+                            ${card.quickActions && card.quickActions.length > 0 ? `
+                                <div class="quick-actions" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0;">
+                                    ${card.quickActions.map((action, index) => `
+                                        <button class="quick-action-btn" data-agent-id="${card.agentId || ''}" data-action-index="${index}">
+                                            ${action.icon || ''} ${escapeHtml(action.label)}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            // Quick Actions
+            if (components.quickActions && components.quickActions.length > 0) {
+                html += '<div class="quick-actions">';
+                components.quickActions.forEach((action, index) => {
+                    html += `
+                        <button class="quick-action-btn" data-action-index="${index}">
+                            ${action.icon || ''} ${escapeHtml(action.label)}
+                        </button>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            // Attach event listeners to quick action buttons
+            setTimeout(() => {
+                const quickActionBtns = document.querySelectorAll('.quick-action-btn');
+                quickActionBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const agentId = e.target.dataset.agentId;
+                        const index = parseInt(e.target.dataset.actionIndex);
+                        
+                        // Check if this is a per-agent quick action
+                        if (agentId) {
+                            // Find the agent card (either agentCard or in suggestedAgents)
+                            let action = null;
+                            if (components.agentCard && components.agentCard.agentId === agentId) {
+                                action = components.agentCard.quickActions && components.agentCard.quickActions[index];
+                            } else if (components.suggestedAgents) {
+                                const agentCard = components.suggestedAgents.find(card => card.agentId === agentId);
+                                if (agentCard && agentCard.quickActions) {
+                                    action = agentCard.quickActions[index];
+                                }
+                            }
+                            
+                            if (action) {
+                                handleQuickAction(action, agentId, components);
+                            }
+                        } else {
+                            // Global quick actions (for non-agent intents)
+                            const action = components.quickActions && components.quickActions[index];
+                            if (action) {
+                                handleQuickAction(action, null, components);
+                            }
+                        }
+                    });
+                });
+            }, 0);
+
+            return html;
+        }
+
+        // Show error message
+        function showErrorMessage(error) {
+            addMessage('assistant', `❌ ${error.message}`, null, error.walletBalance);
+        }
+
+        // Show loading indicator
+        function showLoadingIndicator() {
+            const loadingId = `loading_${Date.now()}`;
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = loadingId;
+            loadingDiv.className = 'message assistant';
+            loadingDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="loading-indicator">
+                        <span>Thinking</span>
+                        <div class="loading-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(loadingDiv);
+            scrollToBottom();
+            return loadingId;
+        }
+
+        // Remove loading indicator
+        function removeLoadingIndicator(loadingId) {
+            const loadingEl = document.getElementById(loadingId);
+            if (loadingEl) {
+                loadingEl.remove();
+            }
+        }
+
+        // Scroll to bottom
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Check API health
+        async function checkApiHealth() {
+            try {
+                const response = await fetch(API_ENDPOINTS.health);
+                if (response.ok) {
+                    console.log('✅ API server is reachable');
+                } else {
+                    console.warn('⚠️ API server responded with error');
+                }
+            } catch (error) {
+                console.error('❌ Cannot reach API server:', error.message);
+                addMessage('assistant', `⚠️ Warning: Cannot connect to API server. Please ensure the server is running on ${API_BASE_URL}`);
+            }
+        }
+
+        // Update wallet display
+        function updateWalletDisplay() {
+            if (state.walletBalance !== null) {
+                const formattedBalance = state.currencySymbol === '$'
+                    ? `${state.currencySymbol}${parseFloat(state.walletBalance).toFixed(2)}`
+                    : `${state.currencySymbol}${parseInt(state.walletBalance)}`;
+                walletBalanceEl.textContent = formattedBalance;
+            }
+        }
+
+        // Generate conversation ID using UUID v4 format (32 hex chars)
+        function generateConversationId() {
+            // Generate UUID v4 and convert to hex string (32 characters)
+            // Format: conv_{uuid4().hex}
+            const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+            // Remove dashes to get 32 hex chars
+            const hex = uuid.replace(/-/g, '');
+            return `conv_${hex}`;
+        }
+
+        // Create a new conversation
+        function createNewConversation() {
+            // Set conversationId to null - backend will create a new one
+            state.conversationId = null;
+            state.currentConversation = null;
+            
+            clearChatMessages();
+            showWelcomeMessage();
+            
+            // Conversation will be created when first message is sent
+            // The backend will return the conversationId in the response
+        }
+
+        // Load a specific conversation (from state)
+        function loadConversation(conversationId) {
+            const conversation = state.conversations.find(c => c.conversationId === conversationId);
+            if (!conversation) {
+                console.error('Conversation not found:', conversationId);
+                return;
+            }
+
+            // Use loadConversationFromData to handle the loaded conversation
+            loadConversationFromData(conversation);
+        }
+
+        // Load conversation by ID from MongoDB
+        async function loadConversationById(conversationId) {
+            if (!conversationId || !conversationId.trim()) {
+                alert('Please enter a valid conversation ID');
+                return;
+            }
+
+            conversationId = conversationId.trim();
+            
+            // Show loading indicator
+            clearChatMessages();
+            const loadingId = showLoadingIndicator();
+            loadConversationBtn.disabled = true;
+            loadConversationBtn.textContent = 'Loading...';
+
+            try {
+                // Fetch messages from API
+                const response = await fetch(API_ENDPOINTS.getMessages(conversationId), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                removeLoadingIndicator(loadingId);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log('Messages retrieved:', data);
+
+                if (data.success && data.data) {
+                    const responseData = data.data;
+                    const messages = responseData.messages || [];
+                    const conversation = responseData.conversation || {};
+
+                    if (messages.length === 0) {
+                        addMessage('assistant', 'ℹ️ No messages found for this conversation ID.', null, state.walletBalance);
+                        return;
+                    }
+
+                    // Update state with conversation ID
+                    state.conversationId = conversationId;
+                    
+                    // Check if conversation exists in our list
+                    let localConversation = state.conversations.find(c => c.conversationId === conversationId);
+                    if (!localConversation) {
+                        // Create new conversation entry
+                        localConversation = {
+                            conversationId: conversationId,
+                            userId: conversation.userId || state.userId || 'user_789',
+                            createdAt: conversation.createdAt || new Date().toISOString(),
+                            lastMessageAt: conversation.lastMessageAt || new Date().toISOString(),
+                            messages: messages
+                        };
+                        state.conversations.unshift(localConversation);
+                    } else {
+                        // Update messages
+                        localConversation.messages = messages;
+                    }
+                    state.currentConversation = localConversation;
+                    
+                    renderConversationList();
+
+                    // Clear current messages and display retrieved messages
+                    clearChatMessages();
+
+                    // Display all messages
+                    messages.forEach(msg => {
+                        const role = msg.role;
+                        const content = msg.content;
+                        
+                        // Extract components for assistant messages
+                        let components = null;
+                        if (role === 'assistant') {
+                            components = {};
+                            if (msg.agentCard) components.agentCard = msg.agentCard;
+                            if (msg.suggestedAgents) components.suggestedAgents = msg.suggestedAgents;
+                            if (msg.quickActions) components.quickActions = msg.quickActions;
+                            if (msg.analyticsData) components.analyticsData = msg.analyticsData;
+                            const hasAnalytics = components.analyticsData && (components.analyticsData.table_data?.length > 0 || components.analyticsData.visualization);
+                            if (!components.agentCard && (!components.suggestedAgents || components.suggestedAgents.length === 0) && (!components.quickActions || components.quickActions.length === 0) && !hasAnalytics) {
+                                components = null;
+                            }
+                        }
+
+                        addMessageToUI(role, content, components, null, msg.notice || null);
+                    });
+
+                    // Clear input field
+                    conversationIdInput.value = '';
+
+                } else {
+                    throw new Error('Invalid response format');
+                }
+
+            } catch (error) {
+                console.error('Error loading conversation:', error);
+                removeLoadingIndicator(loadingId);
+                clearChatMessages();
+                addMessage('assistant', `❌ Error: ${error.message}`, null, state.walletBalance);
+            } finally {
+                loadConversationBtn.disabled = false;
+                loadConversationBtn.textContent = 'Load';
+            }
+        }
+
+        // Delete a conversation from local state (note: doesn't delete from MongoDB)
+        window.deleteConversation = function(conversationId, event) {
+            event.stopPropagation();
+            
+            if (confirm('Are you sure you want to remove this conversation from the list?')) {
+                state.conversations = state.conversations.filter(c => c.conversationId !== conversationId);
+                
+                // If deleted conversation was current, create new one
+                if (state.conversationId === conversationId) {
+                    if (state.conversations.length > 0) {
+                        loadConversation(state.conversations[0].conversationId);
+                    } else {
+                        createNewConversation();
+                    }
+                }
+                
+                renderConversationList();
+            }
+        };
+
+        // Render conversation list
+        function renderConversationList() {
+            conversationList.innerHTML = '';
+            
+            if (state.conversations.length === 0) {
+                conversationList.innerHTML = `
+                    <div class="no-conversations">
+                        <p>No conversations yet</p>
+                        <p style="font-size: 0.85rem;">Start a new chat below!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Conversations should already be sorted by API (most recent first)
+            state.conversations.forEach(conv => {
+                const item = document.createElement('div');
+                item.className = `conversation-item ${conv.conversationId === state.conversationId ? 'active' : ''}`;
+                item.onclick = () => loadConversation(conv.conversationId);
+                
+                // Create a display title - use first message content or conversation ID
+                let displayTitle = conv.conversationId;
+                if (conv.title) {
+                    displayTitle = conv.title;
+                } else if (conv.messages && conv.messages.length > 0) {
+                    // Get the first user message as title
+                    const firstUserMsg = conv.messages.find(m => m.role === 'user');
+                    if (firstUserMsg && firstUserMsg.content) {
+                        displayTitle = firstUserMsg.content.substring(0, 40) + (firstUserMsg.content.length > 40 ? '...' : '');
+                    }
+                }
+                
+                // Format date
+                let dateStr = '';
+                if (conv.lastMessageAt) {
+                    const date = new Date(conv.lastMessageAt);
+                    dateStr = date.toLocaleDateString();
+                }
+                
+                item.innerHTML = `
+                    <div class="conversation-title" title="${conv.conversationId}">
+                        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(displayTitle)}</div>
+                        ${dateStr ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">${dateStr}</div>` : ''}
+                    </div>
+                    <div class="conversation-actions">
+                        <button class="conversation-delete-btn" onclick="deleteConversation('${conv.conversationId}', event)" title="Remove from list">🗑️</button>
+                    </div>
+                `;
+                
+                conversationList.appendChild(item);
+            });
+        }
+
+        // Clear chat messages
+        function clearChatMessages() {
+            chatMessages.innerHTML = '';
+        }
+
+        // Show welcome message
+        function showWelcomeMessage() {
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'welcome-message';
+            welcomeDiv.innerHTML = `
+                <h2>👋 Welcome!</h2>
+                <p>How can I help you today with MySellerCentral?</p>
+            `;
+            chatMessages.appendChild(welcomeDiv);
+        }
+
+        // Add message to UI (used when loading conversation)
+        function addMessageToUI(role, content, components = null, walletBalance = null, notice = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const avatar = role === 'user' ? '🧑‍💼' : '🤖';
+            
+            const escapeNotice = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const messageNoticeHtml = (role === 'assistant' && notice)
+                ? `<div class="message-notice" role="status">🚧 ${escapeNotice(notice)}</div>`
+                : '';
+
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content ${role === 'assistant' ? 'markdown-content' : ''}">
+                    ${messageNoticeHtml}
+                    ${formatMessageContent(content, role)}
+                    ${components ? renderComponents(components) : ''}
+                </div>
+            `;
+
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+

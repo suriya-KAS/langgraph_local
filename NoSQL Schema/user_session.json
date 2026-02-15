@@ -1,0 +1,71 @@
+"user_sessions", {
+    validator: {
+      $jsonSchema: {
+        bsonType: "object",
+        required: ["_id", "userId", "sessionId", "createdAt"],
+        properties: {
+          _id: {
+            bsonType: "string",
+            pattern: "^session_[a-zA-Z0-9]+$",
+            description: "Unique session ID"
+          },
+          userId: {
+            bsonType: "string",
+            pattern: "^user_[a-zA-Z0-9_]+$",
+            description: "Client ID"
+          },
+          sessionId: {
+            bsonType: "string",
+            pattern: "^sess_[a-zA-Z0-9]+$",
+            description: "Session identifier"
+          },
+          timeRange: {
+            bsonType: "object",
+            required: ["startedAt"],
+            properties: {
+              startedAt: { bsonType: "date" },
+              endedAt: { bsonType: ["date", "null"] },
+              durationSeconds: { bsonType: ["int", "null"], minimum: 0 }
+            }
+          },
+          activity: {
+            bsonType: "object",
+            properties: {
+              conversationIds: { 
+                bsonType: "array", 
+                items: { bsonType: "string" } 
+            },
+              messageCount: { 
+                bsonType: "int", 
+                minimum: 0
+            },
+              agentsLaunched: { 
+                bsonType: "array", 
+                items: { bsonType: "string" } 
+            },
+              intents: { 
+                bsonType: "object" 
+            },
+              totalTokensUsed: { 
+                bsonType: "int", 
+                minimum: 0 
+            },
+              timezone: { 
+                bsonType: "string" 
+            },
+            }
+          },
+          createdAt: { bsonType: "date" }
+        }
+      }
+    },
+    validationLevel: "moderate",
+    validationAction: "warn"
+  };
+  
+  // Indexes for user_sessions
+  db.user_sessions.createIndex({ "userId": 1, "timeRange.startedAt": -1 }, { name: "idx_userId_startedAt", background: true });
+  db.user_sessions.createIndex({ "sessionId": 1 }, { name: "idx_sessionId", background: true, unique: true });
+  db.user_sessions.createIndex({ "timeRange.startedAt": -1 }, { name: "idx_startedAt", background: true });
+  db.user_sessions.createIndex({ "timeRange.endedAt": 1 }, { name: "idx_endedAt_ttl", expireAfterSeconds: 15552000, background: true, partialFilterExpression: { "timeRange.endedAt": { $ne: null } } }); // 180 days
+  

@@ -1,0 +1,300 @@
+{
+	"info": {
+		"_postman_id": "nlp-agents-chat-api",
+		"name": "NLP Agents Chat API",
+		"description": "Collection for testing the Unified Query System Chat API endpoints - Fresh queries without conversation history",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "https://ai-dev.mysellercentral.com/nlp-agents/health",
+					"protocol": "https",
+					"host": [
+						"ai-dev",
+						"mysellercentral",
+						"com"
+					],
+					"path": [
+						"nlp-agents",
+						"health"
+					]
+				}
+			}
+		},
+		{
+			"name": "Root Endpoint",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "https://ai-dev.mysellercentral.com/nlp-agents/",
+					"protocol": "https",
+					"host": [
+						"ai-dev",
+						"mysellercentral",
+						"com"
+					],
+					"path": [
+						"nlp-agents",
+						""
+					]
+				}
+			}
+		},
+		{
+			"name": "Basic Chat Query",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"message\": \"Show me top 10 selling products\",\n    \"user_id\": 48\n}"
+				},
+				"url": {
+					"raw": "https://ai-dev.mysellercentral.com/nlp-agents/api/chat",
+					"protocol": "https",
+					"host": [
+						"ai-dev",
+						"mysellercentral",
+						"com"
+					],
+					"path": [
+						"nlp-agents",
+						"api",
+						"chat"
+					]
+				}
+			}
+		},
+		{
+			"name": "Chat with Custom Schema",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"message\": \"What are my total sales this month?\",\n    \"user_id\": 51,\n    \"schema_name\": \"amazon\"\n}"
+				},
+				"url": {
+					"raw": "https://ai-dev.mysellercentral.com/nlp-agents/api/chat",
+					"protocol": "https",
+					"host": [
+						"ai-dev",
+						"mysellercentral",
+						"com"
+					],
+					"path": [
+						"nlp-agents",
+						"api",
+						"chat"
+					]
+				}
+			}
+		},
+		{
+			"name": "Chat with Include SQL",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"message\": \"Show me inventory levels for all products\",\n    \"user_id\": 48,\n    \"include_sql\": true\n}"
+				},
+				"url": {
+					"raw": "https://ai-dev.mysellercentral.com/nlp-agents/api/chat",
+					"protocol": "https",
+					"host": [
+						"ai-dev",
+						"mysellercentral",
+						"com"
+					],
+					"path": [
+						"nlp-agents",
+						"api",
+						"chat"
+					]
+				}
+			}
+		},
+		{
+			"name": "Chat with Include Full Data",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"message\": \"List all orders from last week\",\n    \"user_id\": 51,\n    \"include_data\": true\n}"
+				},
+				"url": {
+					"raw": "https://ai-dev.mysellercentral.com/nlp-agents/api/chat",
+					"protocol": "https",
+					"host": [
+						"ai-dev",
+						"mysellercentral",
+						"com"
+					],
+					"path": [
+						"nlp-agents",
+						"api",
+						"chat"
+					]
+				}
+			}
+		},
+		{
+			"name": "Complete Request with All Options",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"message\": \"Show me sales trends by product category for Q1 2024\",\n    \"user_id\": 51,\n    \"schema_name\": \"amazon\",\n    \"include_data\": true,\n    \"include_sql\": true\n}"
+				},
+				"url": {
+					"raw": "https://ai-dev.mysellercentral.com/nlp-agents/api/chat",
+					"protocol": "https",
+					"host": [
+						"ai-dev",
+						"mysellercentral",
+						"com"
+					],
+					"path": [
+						"nlp-agents",
+						"api",
+						"chat"
+					]
+				}
+			}
+		},
+		{
+			"name": "Sales Analysis Query",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"message\": \"What are my top selling products?\",\n    \"user_id\": 48\n}"
+				},
+				"url": {
+					"raw": "https://ai-dev.mysellercentral.com/nlp-agents/api/chat",
+					"protocol": "https",
+					"host": [
+						"ai-dev",
+						"mysellercentral",
+						"com"
+					],
+					"path": [
+						"nlp-agents",
+						"api",
+						"chat"
+					]
+				}
+			}
+		},
+		{
+			"name": "Inventory Check with SQL",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"message\": \"Show me low stock items\",\n    \"user_id\": 48,\n    \"include_sql\": true\n}"
+				},
+				"url": {
+					"raw": "https://ai-dev.mysellercentral.com/nlp-agents/api/chat",
+					"protocol": "https",
+					"host": [
+						"ai-dev",
+						"mysellercentral",
+						"com"
+					],
+					"path": [
+						"nlp-agents",
+						"api",
+						"chat"
+					]
+				}
+			}
+		},
+		{
+			"name": "Request Visualization",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"message\": \"Show me a chart of sales by month\",\n    \"user_id\": 48\n}"
+				},
+				"url": {
+					"raw": "https://ai-dev.mysellercentral.com/nlp-agents/api/chat",
+					"protocol": "https",
+					"host": [
+						"ai-dev",
+						"mysellercentral",
+						"com"
+					],
+					"path": [
+						"nlp-agents",
+						"api",
+						"chat"
+					]
+				}
+			}
+		}
+	]
+}

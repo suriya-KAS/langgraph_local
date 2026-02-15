@@ -1,0 +1,94 @@
+"messages": {
+    validator: {
+      $jsonSchema: {
+        bsonType: "object",
+        required: ["_id", "conversationId", "userId", "role", "content", "timestamp", "createdAt"],
+        properties: {
+          _id: {
+            bsonType: "string",
+            pattern: "^msg_[a-f0-9]+$",
+            description: "Unique message ID"
+          },
+          conversationId: {
+            bsonType: "string",
+            pattern: "^conv_[a-f0-9]{16}$",
+            description: "Reference to conversation"
+          },
+          userId: {
+            bsonType: "string",
+            pattern: "^user_[a-zA-Z0-9_]+$",
+            description: "User identifier"
+          },
+          role: {
+            enum: ["user", "assistant", "system"],
+            description: "Message sender role"
+          },
+          content: {
+            bsonType: "string",
+            description: "Message content"
+          },
+          messageType: {
+            enum: ["text", "voice", "image"],
+            description: "Type of message"
+          },
+          userRequest: {
+            bsonType: ["object", "null"],
+            description: "Original user request data"
+          },
+          assistantResponse: {
+            bsonType: ["object", "null"],
+            description: "Assistant response metadata"
+          },
+          agentCard: {
+            bsonType: ["object", "null"],
+            description: "Agent card component"
+          },
+          suggestedAgents: {
+            bsonType: ["array", "null"],
+            description: "Alternative agent suggestions"
+          },
+          quickActions: {
+            bsonType: ["array", "null"],
+            description: "Quick action buttons"
+          },
+          analyticsData: {
+            bsonType: ["object", "null"],
+            description: "Analytics data (visualization, table_data, generated_sql, row_count, etc.)"
+          },
+          media: {
+            bsonType: ["array", "null"],
+            description: "Media attachments"
+          },
+          processing: {
+            bsonType: ["object", "null"],
+            properties: {
+              modelVersion: { bsonType: "string" },
+              tokensUsed: { bsonType: ["int", "null"] },
+              latencyMs: { bsonType: ["double", "null"] },
+              requestId: { bsonType: ["string", "null"] }
+            }
+          },
+          error: {
+            bsonType: ["object", "null"],
+            properties: {
+              code: { bsonType: ["string", "null"] },
+              message: { bsonType: ["string", "null"] },
+              timestamp: { bsonType: ["date", "null"] }
+            }
+          },
+          timestamp: { bsonType: "date" },
+          createdAt: { bsonType: "date" }
+        }
+      }
+    },
+    validationLevel: "moderate",
+    validationAction: "warn"
+  };
+
+  // Indexes for messages
+db.messages.createIndex({ "conversationId": 1, "timestamp": 1 });
+db.messages.createIndex({ "userId": 1, "timestamp": -1 });
+db.messages.createIndex({ "assistantResponse.intent": 1, "timestamp": -1 });
+db.messages.createIndex({ "agentCard.agentId": 1, "timestamp": -1 });
+db.messages.createIndex({ "error.code": 1 }, { sparse: true }); // Sparse for errors only
+db.messages.createIndex({ "timestamp": 1 }, { expireAfterSeconds: 7776000 }); // 90 days TTL

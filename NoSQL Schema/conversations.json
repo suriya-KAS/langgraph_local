@@ -1,0 +1,201 @@
+"conversations", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["_id", "userId", "status", "createdAt", "updatedAt", "lastMessageAt"],
+      properties: {
+        _id: {
+          bsonType: "string",
+          pattern: "^conv_[a-f0-9]{16}$",
+          description: "Unique conversation ID with format conv_<16-char-hex>"
+        },
+        userId: {
+          bsonType: "string",
+          pattern: "^user_[a-zA-Z0-9_]+$",
+          description: "User identifier - required"
+        },
+        status: {
+          enum: ["active", "archived", "deleted"],
+          description: "Conversation status - required"
+        },
+        title: {
+          bsonType: ["string", "null"],
+          maxLength: 200,
+          description: "Auto-generated or user-set conversation title"
+        },
+        recentMessages: {
+          bsonType: "array",
+          maxItems: 10,
+          items: {
+            bsonType: "object",
+            required: ["messageId", "role", "content", "timestamp"],
+            properties: {
+              messageId: { bsonType: "string" },
+              role: { enum: ["user", "assistant", "system"] },
+              content: { bsonType: "string", maxLength: 5000 },
+              timestamp: { bsonType: "date" },
+              intent: { bsonType: ["string", "null"] },
+              agentId: { bsonType: ["string", "null"] }
+            }
+          }
+        },
+        conversationSummary: {
+          bsonType: ["object", "null"],
+          description: "Summarized content of older messages for context window management",
+          properties: {
+            content: {
+              bsonType: "string",
+              maxLength: 5000,
+              description: "Summarized content of older messages"
+            },
+            messageCount: {
+              bsonType: "int",
+              minimum: 0,
+              description: "Number of messages that were summarized"
+            },
+            lastUpdated: {
+              bsonType: "date",
+              description: "When summary was last created or updated"
+            },
+          }
+        },
+        stats: {
+          bsonType: "object",
+          required: ["messageCount", "totalTokensUsed", "totalCost"],
+          properties: {
+            messageCount: {
+              bsonType: "int",
+              minimum: 0,
+              description: "Total number of messages in conversation"
+            },
+            totalTokensUsed: {
+              bsonType: "int",
+              minimum: 0,
+              description: "Total tokens consumed"
+            },
+          }
+        },
+        createdAt: {
+          bsonType: "date",
+          description: "Conversation creation timestamp - required"
+        },
+        updatedAt: {
+          bsonType: "date",
+          description: "Last update timestamp - required"
+        },
+        lastMessageAt: {
+          bsonType: "date",
+          description: "Timestamp of last message - required"
+        },
+        expiresAt: {
+          bsonType: ["date", "null"],
+          description: "Expiration timestamp for TTL-based archival"
+        },
+        metadata: {
+          bsonType: "object",
+          properties: {
+            source: {
+              enum: ["web", "mobile", "api"],
+              description: "Source of conversation"
+            },
+            satisfactionRating: {
+              bsonType: ["int", "null"],
+              minimum: 1,
+              maximum: 5,
+              description: "User satisfaction rating (1-5)"
+            },
+            feedback: {
+              bsonType: ["string", "null"],
+              maxLength: 1000,
+              description: "User feedback text"
+            }
+          }
+        },
+        clientInfo: {
+          bsonType: "object",
+          properties: {
+            device: {
+              enum: ["mobile", "desktop", "tablet"],
+              description: "Device type"
+            },
+            appVersion: {
+              bsonType: "string",
+              description: "Application version"
+            },
+            platform: {
+              enum: ["ios", "android", "web", null],
+              description: "Platform type"
+            },
+            timezone: {
+              bsonType: "string",
+              description: "User timezone (e.g., Asia/Kolkata)"
+            }
+          }
+        }
+      }
+    }
+  },
+  validationLevel: "moderate", // Can be 'strict', 'moderate', or 'off'
+  validationAction: "warn" // Can be 'warn' or 'error'
+});
+
+// ============================================================================
+// STEP 2: CREATE INDEXES FOR OPTIMAL QUERY PERFORMANCE
+// ============================================================================
+
+// Index 1: Primary query pattern - Get user's conversations ordered by last activity
+db.conversations.createIndex(
+  { "userId": 1, "lastMessageAt": -1 },
+  {
+    name: "idx_userId_lastMessageAt",
+    background: true
+  }
+);
+
+// Index 2: Filter by user and status, ordered by last activity
+db.conversations.createIndex(
+  { "userId": 1, "status": 1, "lastMessageAt": -1 },
+  {
+    name: "idx_userId_status_lastMessageAt",
+    background: true
+  }
+);
+
+// Index 3: Global conversation listing (admin/analytics)
+db.conversations.createIndex(
+  { "status": 1, "updatedAt": -1 },
+  {
+    name: "idx_status_updatedAt",
+    background: true
+  }
+);
+
+// Index 4: TTL index for auto-archival of expired conversations
+db.conversations.createIndex(
+  { "expiresAt": 1 },
+  {
+    name: "idx_expiresAt_ttl",
+    expireAfterSeconds: 0, // Expire immediately when expiresAt is reached
+    background: true,
+    partialFilterExpression: { "expiresAt": { $ne: null } } // Only index docs with expiresAt
+  }
+);
+
+// Index 5: Search by tags (optional, for categorization)
+db.conversations.createIndex(
+  { "metadata.tags": 1, "updatedAt": -1 },
+  {
+    name: "idx_tags_updatedAt",
+    background: true,
+    sparse: true // Only index documents that have tags
+  }
+);
+
+// Index 6: Find conversations by creation date (analytics)
+db.conversations.createIndex(
+  { "createdAt": -1 },
+  {
+    name: "idx_createdAt",
+    background: true
+  }
+);

@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+# boto3
+# aioboto3
+langchain-aws
+langchain-core
+langgraph
+httpx
+pydantic
+tenacity
+pymongo
+motor
+langfuse
+google-genai
+psycopg2-binary

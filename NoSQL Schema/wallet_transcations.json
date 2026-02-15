@@ -1,0 +1,76 @@
+"wallet_transactions", {
+    validator: {
+      $jsonSchema: {
+        bsonType: "object",
+        required: ["_id", "userId", "transactionType", "amount", "balanceBefore", "balanceAfter", "status", "timestamp", "createdAt"],
+        properties: {
+          _id: {
+            bsonType: "string",
+            pattern: "^txn_[a-f0-9]+$",
+            description: "Unique transaction ID"
+          },
+          userId: {
+            bsonType: "string",
+            pattern: "^user_[a-zA-Z0-9_]+$",
+            description: "Client ID"
+          },
+          transactionType: {
+            enum: ["debit", "credit", "refund"],
+            description: "Transaction type"
+          },
+          amount: {
+            bsonType: "double",
+            description: "Transaction amount (positive value)"
+          },
+          currency: {
+            enum: ["USD","INR"],
+            description: "Currency"
+          },
+          balanceBefore: {
+            bsonType: "double",
+            minimum: 0,
+            description: "Balance before transaction"
+          },
+          balanceAfter: {
+            bsonType: "double",
+            minimum: 0,
+            description: "Balance after transaction"
+          },
+          relatedTo: {
+            bsonType: ["object", "null"],
+            properties: {
+              type: { 
+                enum: ["agent_launch", "message", "recharge", "refund"],
+                description: "Type of related entity"
+              },
+              id: { bsonType: "string", description: "Related entity ID" },
+              agentId: { bsonType: ["string", "null"] },
+              conversationId: { bsonType: ["string", "null"] }
+            }
+          },
+          description: {
+            bsonType: "string",
+            maxLength: 500,
+            description: "Transaction description"
+          },
+          status: {
+            enum: ["pending", "completed", "failed", "reversed"],
+            description: "Transaction status"
+          },
+          timestamp: { bsonType: "date" },
+          createdAt: { bsonType: "date" }
+        }
+      }
+    },
+    validationLevel: "strict",
+    validationAction: "error"
+  };
+  
+  // Indexes for wallet_transactions
+  db.wallet_transactions.createIndex({ "userId": 1, "timestamp": -1 }, { name: "idx_userId_timestamp", background: true });
+  db.wallet_transactions.createIndex({ "userId": 1, "status": 1, "timestamp": -1 }, { name: "idx_userId_status_timestamp", background: true });
+  db.wallet_transactions.createIndex({ "relatedTo.type": 1, "timestamp": -1 }, { name: "idx_relatedType_timestamp", background: true });
+  db.wallet_transactions.createIndex({ "relatedTo.id": 1 }, { name: "idx_relatedId", background: true });
+  db.wallet_transactions.createIndex({ "status": 1, "createdAt": -1 }, { name: "idx_status_createdAt", background: true });
+  db.wallet_transactions.createIndex({ "timestamp": -1 }, { name: "idx_timestamp", background: true });
+  

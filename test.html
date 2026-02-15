@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .chat-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            height: 500px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .message.user {
+            background: #667eea;
+            color: white;
+            text-align: right;
+        }
+        .message.assistant {
+            background: #2d2d2d;
+            color: #e0e0e0;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .agent-card {
+            background: #1a1a1a;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .agent-card h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+        }
+        .agent-card .cost {
+            color: #4ade80;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .agent-card .features {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+        .agent-card .features li:before {
+            content: "✓ ";
+            color: #4ade80;
+            margin-right: 5px;
+        }
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .quick-action-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .quick-action-btn:hover {
+            background: #5568d3;
+        }
+        .error-message {
+            background: #ef4444;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .wallet-info {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>MySellerCentral Chatbot Test</h1>
+    
+    <div class="chat-container" id="chatContainer"></div>
+    
+    <form id="chatForm">
+        <div class="input-container">
+            <input 
+                type="text" 
+                id="messageInput" 
+                placeholder="Type your message..."
+            />
+            <button type="submit" id="sendButton">Send</button>
+        </div>
+    </form>
+    
+    <div style="margin-top: 10px; display: flex; gap: 20px; flex-wrap: wrap;">
+        <div>
+            <label>Language: </label>
+            <select id="languageSelect">
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="Hindi">Hindi</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+            </select>
+        </div>
+        <div>
+            <label>User ID: </label>
+            <input type="text" id="userIdInput" value="user_789" style="width: 150px;">
+        </div>
+        <div>
+            <label>Conversation ID: </label>
+            <input type="text" id="conversationIdInput" value="conv_123456" style="width: 150px;">
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8502/api/chat/message';
+        let conversationId = 'conv_' + Date.now();
+        
+        // Test API connection on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('http://localhost:8502/health');
+                if (response.ok) {
+                    console.log('✅ API server is reachable');
+                } else {
+                    console.warn('⚠️ API server responded with error:', response.status);
+                }
+            } catch (error) {
+                console.error('❌ Cannot reach API server. Make sure the server is running on http://localhost:8502');
+                console.error('Error details:', error.message);
+                // Show warning in UI
+                const chatContainer = document.getElementById('chatContainer');
+                const warningDiv = document.createElement('div');
+                warningDiv.className = 'error-message';
+                warningDiv.innerHTML = '<strong>Warning:</strong> Cannot connect to API server. Please ensure the server is running on http://localhost:8502';
+                chatContainer.appendChild(warningDiv);
+            }
+            
+            // Set up form submission handler using addEventListener (more reliable than inline)
+            const chatForm = document.getElementById('chatForm');
+            if (chatForm) {
+                chatForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    sendMessage(e);
+                    return false;
+                });
+            }
+            
+            // Also handle Enter key in input field (redundant but safe)
+            const messageInput = document.getElementById('messageInput');
+            if (messageInput) {
+                messageInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Directly call sendMessage with the event
+                        sendMessage(e);
+                    }
+                });
+            }
+        });
+        
+        // Initialize conversation ID from input or generate new one
+        function getConversationId() {
+            const input = document.getElementById('conversationIdInput');
+            if (!input.value || input.value.trim() === '') {
+                input.value = 'conv_' + Date.now();
+            }
+            return input.value;
+        }
+
+        function addMessage(role, content, components = null, walletBalance = null) {
+            const container = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            // Add main content
+            const contentDiv = document.createElement('div');
+            contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+            messageDiv.appendChild(contentDiv);
+            
+            // Add wallet balance info if available
+            if (walletBalance !== null) {
+                const walletDiv = document.createElement('div');
+                walletDiv.className = 'wallet-info';
+                walletDiv.textContent = `💰 Wallet Balance: ${walletBalance} Rupees`;
+                messageDiv.appendChild(walletDiv);
+            }
+            
+            // Add components if present
+            if (components) {
+                const componentsDiv = document.createElement('div');
+                componentsDiv.style.marginTop = '15px';
+                
+                // Agent Card
+                if (components.agentCard) {
+                    const agentCard = document.createElement('div');
+                    agentCard.className = 'agent-card';
+                    agentCard.innerHTML = `
+                        <h3>${components.agentCard.icon} ${components.agentCard.name}</h3>
+                        <div class="cost">Cost: ${components.agentCard.cost} Rupees | After: ${components.agentCard.walletAfter} Rupees</div>
+                        <div>Marketplace: ${components.agentCard.marketplace.join(', ')}</div>
+                        <ul class="features">
+                            ${components.agentCard.features.map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                    `;
+                    componentsDiv.appendChild(agentCard);
+                }
+                
+                // Quick Actions
+                if (components.quickActions && components.quickActions.length > 0) {
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'quick-actions';
+                    components.quickActions.forEach(action => {
+                        const btn = document.createElement('button');
+                        btn.className = 'quick-action-btn';
+                        btn.textContent = action.label;
+                        btn.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            document.getElementById('messageInput').value = action.message;
+                            // Create a synthetic event for sendMessage
+                            const syntheticEvent = { preventDefault: () => {}, stopPropagation: () => {} };
+                            sendMessage(syntheticEvent);
+                        };
+                        actionsDiv.appendChild(btn);
+                    });
+                    componentsDiv.appendChild(actionsDiv);
+                }
+                
+                messageDiv.appendChild(componentsDiv);
+            }
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function addErrorMessage(error) {
+            const container = document.getElementById('chatContainer');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.innerHTML = `
+                <strong>Error [${error.code}]:</strong> ${error.message}
+                ${error.details ? '<br><small>' + JSON.stringify(error.details, null, 2) + '</small>' : ''}
+                ${error.walletBalance !== null && error.walletBalance !== undefined ? 
+                    '<br><small>💰 Wallet Balance: ' + error.walletBalance + ' Rupees</small>' : ''}
+            `;
+            container.appendChild(errorDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage(event) {
+            // Prevent any form submission or page refresh - ALWAYS prevent default
+            if (event && typeof event.preventDefault === 'function') {
+                event.preventDefault();
+            }
+            if (event && typeof event.stopPropagation === 'function') {
+                event.stopPropagation();
+            }
+            
+            // Additional safety: prevent any default behavior
+            if (event && event.cancelable !== false) {
+                event.preventDefault();
+            }
+            
+            const input = document.getElementById('messageInput');
+            const button = document.getElementById('sendButton');
+            const language = document.getElementById('languageSelect').value;
+            const userId = document.getElementById('userIdInput').value || 'user_789';
+            const conversationId = getConversationId();
+            const message = input.value.trim();
+
+            if (!message) {
+                if (event && typeof event.preventDefault === 'function') {
+                    event.preventDefault();
+                }
+                return false;
+            }
+
+            // Add user message FIRST and store reference to ensure it doesn't disappear
+            const userMessageElement = document.createElement('div');
+            userMessageElement.className = 'message user';
+            userMessageElement.innerHTML = message.replace(/\n/g, '<br>');
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.appendChild(userMessageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Clear input after message is added
+            input.value = '';
+            button.disabled = true;
+            button.textContent = 'Sending...';
+
+            // Add loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant loading';
+            loadingDiv.textContent = 'Thinking...';
+            loadingDiv.id = 'loading-indicator-' + Date.now();
+            chatContainer.appendChild(loadingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            try {
+                // Prepare request with new structure
+                const requestBody = {
+                    message: message,
+                    conversationId: conversationId,
+                    messageType: "text",
+                    context: {
+                        userId: userId,
+                        previousIntent: null,
+                        clientInfo: {
+                            device: navigator.userAgent.match(/Mobile/) ? "mobile" : "desktop",
+                            appVersion: "1.0.0",
+                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                            platform: navigator.platform.toLowerCase().includes('mac') ? "web" : "web",
+                            userAgent: navigator.userAgent
+                        },
+                        metadata: {}
+                    },
+                    language: language
+                };
+
+                console.log('Sending request to:', API_URL);
+                console.log('Request body:', requestBody);
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+
+                console.log('Response received:', response.status, response.statusText);
+
+                // Remove loading indicator
+                if (loadingDiv && loadingDiv.parentNode) {
+                    loadingDiv.remove();
+                }
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                // Handle new response structure
+                if (data.success) {
+                    // Success response
+                    const responseData = data.data;
+                    addMessage(
+                        'assistant', 
+                        responseData.reply,
+                        responseData.components,
+                        responseData.walletBalance
+                    );
+                    
+                    // Log metadata if present
+                    if (data.metadata) {
+                        console.log('Response Metadata:', {
+                            intent: responseData.intent,
+                            latency: data.metadata.latencyMs + 'ms',
+                            requestId: data.metadata.requestId
+                        });
+                    }
+                } else {
+                    // Error response
+                    addErrorMessage(data.error);
+                }
+            } catch (error) {
+                console.error('Error in sendMessage:', error);
+                // Remove loading indicator if still present
+                if (loadingDiv && loadingDiv.parentNode) {
+                    loadingDiv.remove();
+                }
+                // Show error message
+                addMessage('assistant', 'Error: ' + error.message);
+                // Also log to console for debugging
+                console.error('Full error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                });
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Send';
+            }
+            
+            return false; // Prevent any default form behavior
+        }
+    </script>
+</body>
+</html>

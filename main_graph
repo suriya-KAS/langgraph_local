@@ -1,0 +1,35 @@
+digraph main_graph {
+	nodesep=1 rankdir=LR ranksep=1.3 splines=ortho
+	node [fillcolor="#b0b0b0" fontname=Helvetica fontsize=11 height=1.0 shape=box style=filled width=2.2]
+	edge [arrowsize=0.8 fontname=Helvetica fontsize=9]
+	start [label="Start
+(user input)" fillcolor="#d0d0d0"]
+	uie [label="User Intent
+Enricher"]
+	router [label="Intent Router /
+Orchestrator" fillcolor="#a0a0a0"]
+	analytics_graph [label="Analytics
+Subgraph" fillcolor="#c0e0ff"]
+	pd_graph [label="Product Detail
+Subgraph" fillcolor="#c0e0ff"]
+	rec_graph [label="Recommendation
+Subgraph" fillcolor="#c0e0ff"]
+	oos_graph [label="Out Of Scope
+Subgraph" fillcolor="#c0e0ff"]
+	assembler [label="Response
+Assembler" fillcolor="#d0d0d0"]
+	start -> uie [label="State: user_query"]
+	uie -> router [label="State: +intent"]
+	router -> analytics_graph [label="if intent == analytics_reporting"]
+	router -> pd_graph [label="if intent == product_detail"]
+	router -> rec_graph [label="if intent == recommendation"]
+	router -> oos_graph [label="fallback / oos"]
+	analytics_graph -> assembler [label="State: +analytics_insights
+(+product_suggestions?)"]
+	pd_graph -> assembler [label="State: +product_detail"]
+	rec_graph -> assembler [label="State: +recommendations"]
+	oos_graph -> assembler [label="State: +oos_reason"]
+	end [label="Final
+answer" fillcolor="#d0ffd0"]
+	assembler -> end [label="compose from state.*"]
+}

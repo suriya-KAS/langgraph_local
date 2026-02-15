@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Federated Learning Q&A Section</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .section {
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #f8f9fa;
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.2s;
+        }
+
+        .section-header:hover {
+            background: #e9ecef;
+        }
+
+        .section-header.active {
+            background: #e3f2fd;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .section-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .section-icon.red {
+            color: #dc3545;
+        }
+
+        .chevron-icon {
+            width: 20px;
+            height: 20px;
+            transition: transform 0.3s;
+        }
+
+        .chevron-icon.rotated {
+            transform: rotate(180deg);
+        }
+
+        .section-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .section-content.expanded {
+            max-height: 10000px;
+        }
+
+        .questions-container {
+            padding: 20px;
+        }
+
+        .question-item {
+            margin-bottom: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .question-header {
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            transition: background 0.2s;
+        }
+
+        .question-header:hover {
+            background: #f8f9fa;
+        }
+
+        .question-text {
+            font-weight: 500;
+            color: #495057;
+            flex: 1;
+            margin-right: 15px;
+        }
+
+        .question-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .question-content.expanded {
+            max-height: 10000px;
+        }
+
+        .question-body {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .question-section {
+            margin-bottom: 20px;
+        }
+
+        .question-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .question-section h4 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-icon-small {
+            width: 18px;
+            height: 18px;
+        }
+
+        .question-section-content {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+        }
+
+        .impact-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .impact-critical {
+            background: #fee;
+            color: #c00;
+            border: 1px solid #fcc;
+        }
+
+        .impact-high {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        pre {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        ul, ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        strong {
+            color: #2c3e50;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        table th, table td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+        }
+
+        table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Federated Learning Research Q&A</h1>
+        <div id="qa-container"></div>
+    </div>
+
+    <script>
+        // Icon SVGs
+        const icons = {
+            chevronDown: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
+            chevronUp: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`,
+            alertTriangle: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+            checkCircle: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`,
+            lightbulb: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="21" x2="15" y2="21"></line><line x1="12" y1="3" x2="12" y2="23"></line><path d="M5 12H1a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4"></path><path d="M19 12h4a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-4"></path></svg>`
+        };
+
+        // Simple markdown to HTML converter for bold and code
+        function markdownToHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+                    return `<pre><code>${escapeHtml(code.trim())}</code></pre>`;
+                })
+                .replace(/\n/g, '<br>');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Data
+        const sections = [
+            {
+                id: 'dataset',
+                title: '1. Dataset & Data Quality Issues',
+                icon: 'alertTriangle',
+                color: 'red',
+                questions: [
+                    {
+                        id: 'q1',
+                        question: 'Why is 1,000 sentences fundamentally insufficient for transformer-based NER, and what is the minimum dataset size needed?',
+                        reasoning: `Let me break down the mathematical and empirical reasoning:\n\n**Transformer Parameter Count:**\n- BERT-base: ~110M parameters\n- RoBERTa-base: ~125M parameters\n- Even DistilBERT: ~66M parameters\n\n**Training Data Requirements (Rule of Thumb):**\n- Need 10-100 examples per parameter for generalization\n- For fine-tuning: minimum 10,000-50,000 examples\n- Your 1,000 sentences = severe underfitting risk\n\n**Why This Matters:**\n1. **Overfitting**: With 200 sentences per client and 3 local epochs, models see same 200 sentences 3 times per round × 15 rounds = 45 times. This causes memorization, not learning.\n\n2. **Entity Sparsity**: Military entities are rare. If you have 10 entity types and average 2 entities per sentence → only 400 total entity mentions across dataset → ~40 per entity type → catastrophically insufficient.\n\n3. **Non-IID Impact**: With only 200 sentences per client, random variance dominates actual domain differences.`,
+                        solution: `**Immediate Actions (2-3 months):**\n\n1. **Scale Data Collection:**\n   - Target: Minimum 10,000 sentences (50,000+ tokens)\n   - Use OSINT sources systematically:\n     * Jane's Defence Weekly archives\n     * Military.com technical articles\n     * Defense.gov press releases\n     * Congressional Research Service reports\n     * International relations journals\n   \n2. **Semi-Automated Annotation:**\n   \`\`\`python\n   # Use weak supervision approach\n   import spacy\n   from snorkel.labeling import labeling_function\n   \n   # Pre-annotate with military lexicons\n   military_lexicon = {\n       'AIRCRAFT': ['F-16', 'Apache', 'Predator'],\n       'RADAR': ['AN/APG-77', 'AESA', 'Patriot'],\n       'UNIT': ['1st Infantry', 'SEAL Team']\n   }\n   \n   @labeling_function()\n   def lexicon_matcher(sentence):\n       for entity_type, terms in military_lexicon.items():\n           if any(term in sentence for term in terms):\n               return entity_type\n       return ABSTAIN\n   \n   # Then manually review and correct\n   \`\`\`\n\n3. **Data Augmentation:**\n   \`\`\`python\n   # Context-aware augmentation\n   import nlpaug.augmenter.word as naw\n   \n   aug = naw.ContextualWordEmbsAug(\n       model_path='bert-base-uncased',\n       action="substitute"\n   )\n   \n   # Preserve entity boundaries during augmentation\n   def augment_preserving_entities(text, entities):\n       # Mask entities before augmentation\n       # Apply augmentation\n       # Restore entities\n       pass\n   \`\`\`\n\n4. **Cross-Domain Transfer:**\n   - Pre-train on general NER (CoNLL-2003, OntoNotes)\n   - Fine-tune on military subset\n   - This requires less military-specific data\n\n**Validation Strategy:**\n\`\`\`\nTrain: 70% (7,000 sentences)\nValidation: 15% (1,500 sentences)  \nTest: 15% (1,500 sentences)\n\nPer client (5 clients):\nTrain: 1,400 sentences each\nThis is 7x your current size\n\`\`\``,
+                        impact: 'CRITICAL - Without this, all results are questionable'
+                    },
+                    {
+                        id: 'q2',
+                        question: 'How do you create realistic non-IID distributions that actually reflect military domain heterogeneity rather than random sampling?',
+                        reasoning: `**Current Approach Problem:**\nYou state: "random sampling without replacement" + "controlled randomization based on military domain attributes"\n\nThis is contradictory and mathematically unclear.\n\n**What Real Non-IID Means in Military Context:**\n\n1. **Label Distribution Skew**: \n   - Air Force client: 70% aircraft entities, 5% naval vessels\n   - Navy client: 60% ships, 10% aircraft\n   - Intelligence: 40% surveillance tech, 30% personnel ranks\n\n2. **Vocabulary Divergence**:\n   - Air Force: "sortie", "airspace", "scramble"\n   - Navy: "deployment", "carrier group", "flotilla"\n   - Different syntactic patterns\n\n3. **Quantity Skew**:\n   - Large units (Air Force): 2,000 sentences\n   - Small units (Special Ops): 500 sentences\n\n**Measuring Non-IID-ness:**\nYou need to quantify heterogeneity using:\n- Kullback-Leibler (KL) divergence\n- Earth Mover's Distance\n- Wasserstein distance between client distributions`,
+                        solution: `**Step-by-Step Non-IID Creation:**\n\n\`\`\`python\nimport numpy as np\nfrom scipy.stats import dirichlet\nfrom sklearn.metrics import wasserstein_distance\n\n# Define military domains\ndomains = ['AIR_FORCE', 'NAVY', 'ARMY', 'INTELLIGENCE', 'SPECIAL_OPS']\nentity_types = ['AIRCRAFT', 'SHIP', 'VEHICLE', 'WEAPON', \n                'RADAR', 'PERSONNEL', 'LOCATION', 'OPERATION']\n\n# Create domain-specific entity distributions\ndef create_domain_distribution(domain):\n    if domain == 'AIR_FORCE':\n        return np.array([0.40, 0.02, 0.10, 0.15, 0.20, 0.08, 0.03, 0.02])\n    elif domain == 'NAVY':\n        return np.array([0.05, 0.45, 0.05, 0.20, 0.15, 0.05, 0.03, 0.02])\n    elif domain == 'INTELLIGENCE':\n        return np.array([0.05, 0.05, 0.05, 0.10, 0.30, 0.20, 0.15, 0.10])\n    # ... etc\n\n# Partition dataset by domain\ndef partition_by_domain(dataset, num_clients=5):\n    client_data = {i: [] for i in range(num_clients)}\n    \n    for doc in dataset:\n        # Classify document domain based on entity distribution\n        domain = classify_document_domain(doc)\n        client_id = domain_to_client_mapping[domain]\n        client_data[client_id].append(doc)\n    \n    return client_data\n\n# Add synthetic domain markers\ndef augment_with_domain_context(text, domain):\n    domain_prefixes = {\n        'AIR_FORCE': ['During aerial operations', 'The squadron'],\n        'NAVY': ['The naval task force', 'Maritime patrol'],\n        'INTELLIGENCE': ['According to intercepted communications', 'SIGINT revealed']\n    }\n    # Prepend context naturally\n    return random.choice(domain_prefixes[domain]) + " " + text\n\n# Measure non-IID level\ndef compute_non_iid_metrics(client_distributions):\n    # Average KL divergence from uniform distribution\n    uniform = np.ones(len(entity_types)) / len(entity_types)\n    \n    kl_divergences = []\n    for client_dist in client_distributions:\n        kl = np.sum(client_dist * np.log(client_dist / uniform))\n        kl_divergences.append(kl)\n    \n    # Pairwise Wasserstein distance\n    pairwise_distances = []\n    for i in range(len(client_distributions)):\n        for j in range(i+1, len(client_distributions)):\n            dist = wasserstein_distance(\n                client_distributions[i], \n                client_distributions[j]\n            )\n            pairwise_distances.append(dist)\n    \n    return {\n        'mean_kl_divergence': np.mean(kl_divergences),\n        'mean_pairwise_distance': np.mean(pairwise_distances),\n        'heterogeneity_score': np.std(pairwise_distances)\n    }\n\`\`\`\n\n**Validation Approach:**\n\nCreate 3 heterogeneity levels:\n1. **Low non-IID** (α = 100): Nearly IID, for baseline\n2. **Medium non-IID** (α = 10): Moderate heterogeneity\n3. **High non-IID** (α = 0.1): Extreme heterogeneity\n\nTest each FL algorithm under all three conditions.\n\n**Report in Paper:**\n\`\`\`\nTable: Client Data Distribution\n\nClient  | AIRCRAFT | SHIP | VEHICLE | ... | KL-Div | Size\n--------|----------|------|---------|-----|--------|------\nAir F.  | 320      | 15   | 85      | ... | 1.24   | 1400\nNavy    | 45       | 380  | 60      | ... | 1.38   | 1800\nIntel   | 30       | 35   | 45      | ... | 0.92   | 1200\n...\n\nMean Pairwise Wasserstein Distance: 0.67 ± 0.12\n\`\`\``,
+                        impact: 'HIGH - Affects validity of non-IID claims'
+                    },
+                    {
+                        id: 'q3',
+                        question: 'What is your inter-annotator agreement, and how do you ensure annotation quality for specialized military entities?',
+                        reasoning: `**The Problem:**\nYou state "carefully annotated" but provide no metrics. In specialized domains:\n\n1. **Ambiguity Examples:**\n   - Is "Patriot" a WEAPON_SYSTEM or MISSILE?\n   - Is "Joint Task Force 2" an ORGANIZATION or UNIT?\n   - Is "Operation Desert Storm" an EVENT or OPERATION?\n\n2. **Expertise Requirements:**\n   - Annotators need military knowledge\n   - Consistency across 1000+ sentences is hard\n   - Single annotator = high bias risk\n\n3. **Quality Metrics:**\n   Standard: Cohen's Kappa (κ) or Fleiss' Kappa\n   - κ < 0.40: Poor agreement\n   - κ = 0.40-0.60: Moderate\n   - κ = 0.60-0.80: Substantial\n   - κ > 0.80: Almost perfect\n\nWithout this, your "ground truth" labels may be noisy, making all performance metrics unreliable.`,
+                        solution: `**Annotation Protocol (Implement Before Expanding Dataset):**\n\n**Phase 1: Annotation Guidelines Development**\n\n\`\`\`markdown\n# Military NER Annotation Guidelines v1.0\n\n## Entity Definitions\n\n### AIRCRAFT\n- Definition: Any aerial vehicle (manned or unmanned)\n- Examples: F-35, Apache helicopter, Predator drone\n- NOT: Airlines (commercial), birds, missiles\n\n### WEAPON_SYSTEM\n- Definition: Integrated military hardware for combat\n- Examples: Aegis Combat System, Iron Dome\n- Borderline: Individual weapons → EQUIPMENT\n\n### UNIT\n- Definition: Organized military formation\n- Examples: 82nd Airborne, SEAL Team 6\n- NOT: Individual soldiers → PERSONNEL\n\n## Annotation Rules\n1. Annotate longest matching span\n2. Nested entities: choose outer span\n3. When ambiguous: consult decision tree (below)\n\`\`\`\n\n**Phase 2: Multi-Annotator Study**\n\n\`\`\`python\n# Annotation workflow\ndef annotation_study():\n    # 1. Select 200 sentences randomly\n    sample = random.sample(dataset, 200)\n    \n    # 2. Three annotators annotate independently\n    annotations = {\n        'annotator_1': annotate(sample, annotator_1),\n        'annotator_2': annotate(sample, annotator_2),\n        'annotator_3': annotate(sample, annotator_3)\n    }\n    \n    # 3. Compute inter-annotator agreement\n    from sklearn.metrics import cohen_kappa_score\n    \n    kappa_12 = compute_entity_kappa(\n        annotations['annotator_1'],\n        annotations['annotator_2']\n    )\n    # Repeat for all pairs\n    \n    # 4. Identify disagreements\n    disagreements = find_conflicts(annotations)\n    \n    # 5. Adjudication meeting\n    for conflict in disagreements:\n        resolved = discuss_and_resolve(conflict)\n        update_guidelines_if_needed(resolved)\n    \n    # 6. Re-annotate with updated guidelines\n    # Target: κ > 0.75\n\ndef compute_entity_kappa(anno1, anno2):\n    """\n    Token-level kappa considering:\n    - Exact boundary match\n    - Entity type match\n    """\n    # Convert to IOB2 format\n    iob1 = to_iob2(anno1)\n    iob2 = to_iob2(anno2)\n    \n    return cohen_kappa_score(iob1, iob2)\n\`\`\`\n\n**Phase 3: Quality Control**\n\n\`\`\`python\n# Ongoing quality checks\ndef quality_control_pipeline():\n    # 1. Random spot-checks (10% of data)\n    # 2. Consistency checks\n    check_entity_consistency()  # Same text → same label?\n    \n    # 3. Automatic conflict detection\n    conflicts = detect_conflicts()\n    # Example: "F-35" labeled as AIRCRAFT 90% of time, \n    #          but WEAPON 10% → Flag for review\n    \n    # 4. Expert review of rare entities\n    rare_entities = find_rare_entities(threshold=5)\n    expert_review(rare_entities)\n\ndef check_entity_consistency():\n    entity_labels = defaultdict(Counter)\n    \n    for doc in corpus:\n        for entity in doc.entities:\n            entity_labels[entity.text][entity.label] += 1\n    \n    # Flag inconsistencies\n    for text, label_counts in entity_labels.items():\n        if len(label_counts) > 1:  # Multiple labels for same text\n            total = sum(label_counts.values())\n            max_label, max_count = label_counts.most_common(1)[0]\n            \n            if max_count / total < 0.9:  # Less than 90% agreement\n                print(f"INCONSISTENT: '{text}'")\n                print(f"  Labels: {label_counts}")\n                # Flag for review\n\`\`\`\n\n**Report in Paper:**\n\n\`\`\`\nSection 3.A: Annotation Quality\n\nThe dataset was annotated by three domain experts with military \nbackgrounds. Inter-annotator agreement was measured on a subset \nof 200 sentences, achieving substantial agreement:\n\n- Pairwise Cohen's Kappa: κ = 0.78 ± 0.04\n- Fleiss' Kappa (3 annotators): κ = 0.76\n\nDisagreements were adjudicated through consensus meetings, \nresulting in refined annotation guidelines (see Appendix A). \nCommon disagreement sources included:\n1. WEAPON vs. WEAPON_SYSTEM boundaries (32% of conflicts)\n2. ORGANIZATION vs. UNIT distinctions (24% of conflicts)\n3. Nested entity handling (18% of conflicts)\n\nAfter guideline refinement, agreement increased to κ = 0.82 \non a second 200-sentence sample.\n\`\`\`\n\n**Tool Recommendation:**\n\nUse annotation tools with built-in agreement calculation:\n- **Prodigy** (by spaCy team)\n- **Label Studio** (open source)\n- **Doccano** (lightweight)\n\nAll support multi-annotator workflows and agreement metrics.`,
+                        impact: 'HIGH - Establishes credibility of dataset'
+                    }
+                ]
+            },
+            {
+                id: 'privacy',
+                title: '2. Privacy & Security Analysis',
+                icon: 'alertTriangle',
+                color: 'red',
+                questions: [
+                    {
+                        id: 'q4',
+                        question: 'How vulnerable is your system to gradient inversion attacks, and what is the actual privacy guarantee?',
+                        reasoning: `**Critical Gap in Your Paper:**\n\nYou acknowledge: "gradient-driven information leakage" as a vulnerability but don't test it.\n\n**Why This Matters for Defense:**\n\nRecent research shows gradient inversion attacks can reconstruct:\n- Individual training sentences with >90% token accuracy\n- Complete sensitive phrases\n- Even from averaged gradients in FL\n\n**Attack Examples:**\n\n1. **Gradient Inversion (Zhu et al. 2019):**\n\`\`\`\nGiven: ∇w = gradient update from client\nGoal: Reconstruct original text x\n\nMethod: Solve optimization problem\n  x* = argmin ||∇w - ∇w'(x')||²\n  where w' is dummy model, x' is candidate text\n\`\`\`\n\n2. **Aggregated Gradient Leakage:**\nEven with FedAvg aggregation, if attacker controls server:\n- Can isolate single client gradient by comparing rounds\n- Batch size matters: smaller batches → easier reconstruction\n\n3. **Military-Specific Risks:**\n\`\`\`\nScenario: Client processes classified cable mentioning:\n"SEAL Team 6 deployed to [LOCATION] for [OPERATION]"\n\nGradient leakage could reveal:\n- Mission existence\n- Unit identity  \n- Operational timeline\n\nEven partial reconstruction = security breach\n\`\`\`\n\n**Your Current "Privacy":**\n- ❌ No formal privacy budget\n- ❌ No differential privacy (DP)\n- ❌ No secure aggregation\n- ❌ No empirical attack testing\n- ✓ Only: "raw data stays local" (insufficient)`,
+                        solution: `**Multi-Layer Privacy Protection:**\n\n**Layer 1: Differential Privacy (ESSENTIAL)**\n\n\`\`\`python\nfrom opacus import PrivacyEngine\nimport torch\n\nclass DPFederatedClient:\n    def __init__(self, model, privacy_budget):\n        self.model = model\n        self.epsilon = privacy_budget  # Privacy budget\n        self.delta = 1e-5  # Failure probability\n        \n        # Initialize DP engine\n        self.privacy_engine = PrivacyEngine()\n        \n    def train_with_dp(self, dataloader, epochs=3):\n        # Attach DP to optimizer\n        model, optimizer, dataloader = self.privacy_engine.make_private(\n            module=self.model,\n            optimizer=torch.optim.Adam(self.model.parameters()),\n            data_loader=dataloader,\n            noise_multiplier=1.1,  # Noise level\n            max_grad_norm=1.0,     # Gradient clipping\n        )\n        \n        for epoch in range(epochs):\n            for batch in dataloader:\n                optimizer.zero_grad()\n                loss = compute_loss(model, batch)\n                loss.backward()\n                optimizer.step()  # DP noise added here\n        \n        # Get privacy spent\n        epsilon_spent = self.privacy_engine.get_epsilon(self.delta)\n        \n        return model.state_dict(), epsilon_spent\n\n# Privacy accounting across rounds\nclass PrivacyAccountant:\n    def __init__(self, target_epsilon=8.0, delta=1e-5):\n        self.target_epsilon = target_epsilon\n        self.delta = delta\n        self.spent_epsilon = 0\n        self.round = 0\n    \n    def update(self, round_epsilon):\n        """\n        Composition theorem: εₜₒₜₐₗ = sqrt(2T ln(1/δ)) * ε_round\n        where T = number of rounds\n        """\n        self.round += 1\n        self.spent_epsilon = np.sqrt(\n            2 * self.round * np.log(1/self.delta)\n        ) * round_epsilon\n        \n        if self.spent_epsilon > self.target_epsilon:\n            raise PrivacyBudgetExceeded(\n                f"Privacy budget exhausted: {self.spent_epsilon:.2f} > {self.target_epsilon}"\n            )\n        \n        return self.spent_epsilon\n\`\`\`\n\n**Layer 2: Secure Aggregation**\n\n\`\`\`python\nfrom cryptography.fernet import Fernet\nimport numpy as np\n\nclass SecureAggregator:\n    """\n    Prevent server from seeing individual gradients\n    Using secure multi-party computation (MPC)\n    """\n    \n    def __init__(self, num_clients):\n        self.num_clients = num_clients\n        self.client_keys = {}\n        \n    def generate_pairwise_masks(self, client_id):\n        """\n        Each client generates random masks for other clients\n        Masks cancel out during aggregation\n        """\n        masks = {}\n        for other_id in range(self.num_clients):\n            if other_id != client_id:\n                # Pseudo-random mask based on shared seed\n                seed = self.get_shared_seed(client_id, other_id)\n                rng = np.random.RandomState(seed)\n                mask = rng.randn(self.param_size)\n                \n                # Add mask if client_id < other_id, subtract otherwise\n                masks[other_id] = mask if client_id < other_id else -mask\n        \n        return masks\n    \n    def secure_aggregate(self, masked_updates):\n        """\n        Sum masked updates - masks cancel out\n        Server sees aggregate, not individual contributions\n        """\n        # masked_updates[i] = gradient_i + Σ masks_i\n        aggregate = sum(masked_updates)\n        # All masks sum to zero, leaving only sum of gradients\n        return aggregate / len(masked_updates)\n\`\`\`\n\n**Layer 3: Gradient Compression & Perturbation**\n\n\`\`\`python\nclass PrivacyPreservingCommunication:\n    def __init__(self, compression_ratio=0.1, noise_scale=0.01):\n        self.compression_ratio = compression_ratio\n        self.noise_scale = noise_scale\n    \n    def compress_and_perturb(self, gradients):\n        """\n        1. Top-k sparsification (send only top 10% gradients)\n        2. Add calibrated noise\n        3. Quantization\n        """\n        # Step 1: Sparsification\n        flat_grad = gradients.flatten()\n        k = int(len(flat_grad) * self.compression_ratio)\n        topk_indices = np.argpartition(np.abs(flat_grad), -k)[-k:]\n        \n        sparse_grad = np.zeros_like(flat_grad)\n        sparse_grad[topk_indices] = flat_grad[topk_indices]\n        \n        # Step 2: Add noise\n        noise = np.random.laplace(0, self.noise_scale, sparse_grad.shape)\n        noisy_grad = sparse_grad + noise\n        \n        # Step 3: Quantization (8-bit)\n        quantized = np.round(noisy_grad * 127).astype(np.int8)\n        \n        return quantized, topk_indices\n    \n    def decompress(self, quantized, indices, original_shape):\n        # Reverse quantization\n        dequantized = quantized.astype(np.float32) / 127\n        \n        # Reconstruct sparse gradient\n        sparse = np.zeros(np.prod(original_shape))\n        sparse[indices] = dequantized\n        \n        return sparse.reshape(original_shape)\n\`\`\`\n\n**Layer 4: Attack Testing (Empirical Validation)**\n\n\`\`\`python\nclass GradientInversionAttack:\n    """\n    Implement attack to test privacy\n    Based on "Deep Leakage from Gradients" (Zhu et al.)\n    """\n    \n    def __init__(self, model, device='cuda'):\n        self.model = model\n        self.device = device\n    \n    def attack(self, target_gradient, num_iterations=1000):\n        """\n        Try to reconstruct input that produced target_gradient\n        """\n        # Initialize dummy data randomly\n        dummy_data = torch.randn(\n            (1, self.model.input_size), \n            requires_grad=True,\n            device=self.device\n        )\n        dummy_label = torch.randn(\n            (1, self.model.output_size),\n            requires_grad=True,\n            device=self.device\n        )\n        \n        optimizer = torch.optim.LBFGS([dummy_data, dummy_label])\n        \n        for i in range(num_iterations):\n            def closure():\n                optimizer.zero_grad()\n                \n                # Forward pass with dummy data\n                dummy_pred = self.model(dummy_data)\n                dummy_loss = criterion(dummy_pred, dummy_label)\n                dummy_gradient = torch.autograd.grad(\n                    dummy_loss, \n                    self.model.parameters(),\n                    create_graph=True\n                )\n                \n                # Match gradient to target\n                grad_diff = sum([\n                    ((dg - tg) ** 2).sum()\n                    for dg, tg in zip(dummy_gradient, target_gradient)\n                ])\n                \n                grad_diff.backward()\n                return grad_diff\n            \n            optimizer.step(closure)\n        \n        # Reconstruct text from dummy_data\n        reconstructed_tokens = self.model.tokenizer.decode(\n            dummy_data.argmax(dim=-1)[0]\n        )\n        \n        return reconstructed_tokens, grad_diff.item()\n\n# Run attack evaluation\ndef evaluate_privacy():\n    attacker = GradientInversionAttack(model)\n    \n    # Test on sample of client data\n    success_rate = 0\n    for sample in test_samples:\n        original_text = sample['text']\n        gradient = compute_gradient(model, sample)\n        \n        # Try reconstruction\n        reconstructed, error = attacker.attack(gradient)\n        \n        # Measure success (BLEU score, token accuracy)\n        similarity = compute_similarity(original_text, reconstructed)\n        \n        if similarity > 0.5:  # Threshold for "successful" attack\n            success_rate += 1\n    \n    print(f"Attack success rate: {success_rate / len(test_samples):.2%}")\n    print(f"Privacy at risk: {'HIGH' if success_rate > 0.1 else 'ACCEPTABLE'}")\n\`\`\`\n\n**Implementation in Your Paper:**\n\n\`\`\`python\n# Modified Flower client with privacy\nclass PrivateFlowerClient(fl.client.NumPyClient):\n    def __init__(self, model, train_data, epsilon=8.0):\n        self.model = model\n        self.train_data = train_data\n        self.privacy_accountant = PrivacyAccountant(target_epsilon=epsilon)\n        self.secure_agg = SecureAggregator(num_clients=5)\n    \n    def fit(self, parameters, config):\n        # Set model parameters\n        set_parameters(self.model, parameters)\n        \n        # Train with differential privacy\n        dp_client = DPFederatedClient(self.model, privacy_budget=1.0)\n        updated_params, epsilon_spent = dp_client.train_with_dp(\n            self.train_data, \n            epochs=3\n        )\n        \n        # Track privacy budget\n        total_epsilon = self.privacy_accountant.update(epsilon_spent)\n        \n        # Secure aggregation masks\n        masks = self.secure_agg.generate_pairwise_masks(self.client_id)\n        masked_params = apply_masks(updated_params, masks)\n        \n        # Compress and perturb\n        compressor = PrivacyPreservingCommunication()\n        compressed = compressor.compress_and_perturb(masked_params)\n        \n        return compressed, len(self.train_data), {\n            "epsilon": total_epsilon,\n            "delta": 1e-5\n        }\n\`\`\`\n\n**Results to Report:**\n\n\`\`\`\nTable: Privacy-Utility Trade-off\n\nMethod          | F1 Score | Epsilon | Attack Success | Comm. Cost\n----------------|----------|---------|----------------|------------\nNo Privacy      | 0.87     | ∞       | 43%            | 100%\nDP (ε=10)       | 0.84     | 10.0    | 12%            | 100%\nDP (ε=5)        | 0.81     | 5.0     | 3%             | 100%\nDP + SecAgg     | 0.81     | 5.0     | 0%             | 120%\nDP + Compression| 0.79     | 5.0     | 0%             | 45%\n\nFigure: Epsilon-Accuracy Curve\n[Show how F1 score degrades as epsilon decreases]\n\nFigure: Attack Success vs Privacy Budget\n[Show gradient inversion success rate for different ε]\n\`\`\`\n\n**Key Insight to Emphasize:**\n\n"For military applications, we recommend ε ≤ 5.0, which reduces \nattack success rate to below 3% while maintaining F1 > 0.80. \nThe modest 6% performance degradation is acceptable given the \nsignificant privacy gain for classified communications."`,
+                        impact: 'CRITICAL - Core requirement for defense applications'
+                    },
+                    {
+                        id: 'q5',
+                        question: 'What is your threat model? Who are you protecting against, and what attacks are in scope?',
+                        reasoning: `**Missing Foundation:**\n\nEvery security paper needs a clear threat model defining:\n1. **Adversaries**: Who might attack? (External hackers, malicious clients, curious server)\n2. **Capabilities**: What can they do? (Observe traffic, inject data, control server)\n3. **Goals**: What do they want? (Steal data, poison model, infer sensitive info)\n4. **In-scope attacks**: What you defend against\n5. **Out-of-scope**: What you explicitly don't handle\n\n**Your Current State**: \nNo threat model → Can't evaluate if your defenses are adequate\n\n**Military Context Makes This Critical:**\n\nPotential adversaries:\n- **Nation-state actors**: Sophisticated, well-resourced\n- **Insider threats**: Compromised military personnel\n- **Server compromise**: What if central server is hacked?\n\n**Attack Taxonomy for FL:**\n\n1. **Privacy Attacks:**\n   - Gradient inversion (reconstruct training data)\n   - Membership inference (determine if text was in training set)\n   - Attribute inference (infer sensitive properties)\n\n2. **Integrity Attacks:**\n   - Model poisoning (malicious clients corrupt global model)\n   - Backdoor injection (trigger specific behaviors)\n   - Byzantine attacks (arbitrary malicious behavior)\n\n3. **Availability Attacks:**\n   - Gradient spamming (send huge updates to slow training)\n   - Dropout attacks (strategic client disconnection)\n\nWithout defining which attacks you address, reviewers can't assess your contribution.`,
+                        solution: `**Formal Threat Model (Add to Paper):**\n\n\`\`\`markdown\n## Section 3.X: Threat Model\n\n### Adversarial Assumptions\n\nWe consider the following threat model for federated learning \nin military contexts:\n\n**1. Honest-but-Curious Server**\n- Assumption: Central server follows protocol but may try to \n  infer private information from received gradients\n- Motivation: Cloud-based FL where server operator is external contractor\n- Capabilities:\n  * Observes all client-server communications\n  * Performs computational attacks on aggregated gradients\n  * Cannot modify client code or data\n- Defense: Differential privacy, secure aggregation\n\n**2. Malicious Clients (Limited)**\n- Assumption: Up to 20% of clients may be compromised or adversarial\n- Capabilities:\n  * Can send arbitrary gradient updates\n  * Can collude with other malicious clients\n  * Cannot break cryptographic primitives\n- Defense: Robust aggregation, outlier detection\n\n**3. External Adversaries**\n- Assumption: Network attackers can observe traffic\n- Capabilities:\n  * Eavesdrop on communications\n  * Cannot decrypt encrypted channels\n- Defense: End-to-end encryption\n\n### In-Scope Attacks\n\n1. Gradient inversion attacks (privacy)\n2. Membership inference attacks (privacy)\n3. Model poisoning (integrity)\n4. Byzantine attacks (integrity)\n\n### Out-of-Scope\n\n1. Physical device compromise\n2. Side-channel attacks\n3. Attacks on training infrastructure\n\`\`\`\n\n**Defense Strategy Mapping:**\n\n| Threat | Defense Mechanism | Implementation |\n|--------|------------------|----------------|\n| Gradient Inversion | Differential Privacy | Opacus library, ε ≤ 5.0 |\n| Membership Inference | DP + Secure Aggregation | Multi-party computation |\n| Model Poisoning | Robust Aggregation | Median, Trimmed Mean |\n| Byzantine Clients | Outlier Detection | Statistical tests |\n\n**Validation:**\n\nTest each defense against corresponding attack:\n- Gradient inversion: Measure reconstruction accuracy\n- Membership inference: Compute attack success rate\n- Model poisoning: Measure model accuracy degradation\n- Byzantine: Measure convergence stability\n\nReport quantitative results for each threat-defense pair.`,
+                        impact: 'HIGH - Required for security evaluation'
+                    }
+                ]
+            }
+        ];
+
+        // State management
+        let expandedSections = {};
+        let expandedQuestions = {};
+
+        // Toggle section
+        function toggleSection(sectionId) {
+            expandedSections[sectionId] = !expandedSections[sectionId];
+            render();
+        }
+
+        // Toggle question
+        function toggleQuestion(questionId) {
+            expandedQuestions[questionId] = !expandedQuestions[questionId];
+            render();
+        }
+
+        // Get impact badge class
+        function getImpactClass(impact) {
+            if (impact.includes('CRITICAL')) {
+                return 'impact-critical';
+            } else if (impact.includes('HIGH')) {
+                return 'impact-high';
+            }
+            return '';
+        }
+
+        // Render the component
+        function render() {
+            const container = document.getElementById('qa-container');
+            container.innerHTML = sections.map(section => {
+                const isExpanded = expandedSections[section.id];
+                const IconComponent = icons[section.icon] || icons.alertTriangle;
+
+                return `
+                    <div class="section">
+                        <div class="section-header ${isExpanded ? 'active' : ''}" 
+                             onclick="toggleSection('${section.id}')">
+                            <div class="section-title">
+                                <span class="section-icon ${section.color}">${IconComponent}</span>
+                                <span>${section.title}</span>
+                            </div>
+                            <span class="chevron-icon ${isExpanded ? 'rotated' : ''}">${icons.chevronDown}</span>
+                        </div>
+                        <div class="section-content ${isExpanded ? 'expanded' : ''}">
+                            <div class="questions-container">
+                                ${section.questions.map(q => {
+                                    const isQExpanded = expandedQuestions[q.id];
+                                    return `
+                                        <div class="question-item">
+                                            <div class="question-header" onclick="toggleQuestion('${q.id}')">
+                                                <div class="question-text">${q.question}</div>
+                                                <span class="chevron-icon ${isQExpanded ? 'rotated' : ''}">${icons.chevronDown}</span>
+                                            </div>
+                                            <div class="question-content ${isQExpanded ? 'expanded' : ''}">
+                                                <div class="question-body">
+                                                    <div class="question-section">
+                                                        <h4>
+                                                            <span class="section-icon-small">${icons.lightbulb}</span>
+                                                            Reasoning
+                                                        </h4>
+                                                        <div class="question-section-content">${markdownToHtml(q.reasoning)}</div>
+                                                    </div>
+                                                    <div class="question-section">
+                                                        <h4>
+                                                            <span class="section-icon-small">${icons.checkCircle}</span>
+                                                            Solution
+                                                        </h4>
+                                                        <div class="question-section-content">${markdownToHtml(q.solution)}</div>
+                                                    </div>
+                                                    <div class="question-section">
+                                                        <h4>
+                                                            <span class="section-icon-small">${icons.alertTriangle}</span>
+                                                            Impact
+                                                        </h4>
+                                                        <div class="question-section-content">
+                                                            <span class="impact-badge ${getImpactClass(q.impact)}">${q.impact}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Make functions globally accessible
+        window.toggleSection = toggleSection;
+        window.toggleQuestion = toggleQuestion;
+
+        // Initial render
+        render();
+    </script>
+</body>
+</html>

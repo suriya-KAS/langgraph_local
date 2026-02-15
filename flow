@@ -1,0 +1,24 @@
+digraph flow {
+	nodesep=1 rankdir=LR ranksep=1.4 splines=ortho
+	node [fillcolor="#b0b0b0" fontname=Helvetica fontsize=12 height=1.0 shape=box style=filled width=2.0]
+	edge [arrowsize=0.8]
+	orch [label=Orchestrator]
+	uie [label="User Intent
+query enrich"]
+	ws [label="Work Status
+validator and
+enrich query"]
+	pd [label="Product Detail"]
+	rec [label=Recommendation]
+	oos [label="Out Of Scope"]
+	ar [label="Analytics
+Reporting"]
+	orch -> uie
+	uie -> ws [label="If and only if user_intent
+is analytics_reporting" fontsize=8]
+	ws -> ar
+	orch -> pd
+	orch -> rec
+	orch -> oos
+	orch -> ar
+}
