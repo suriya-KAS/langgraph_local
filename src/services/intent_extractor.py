@@ -344,17 +344,24 @@ class IntentExtractor:
                 found_agent_ids.add(agent_id)
                 continue
             
-            # Check for partial match: if text contains significant words from agent name
-            # Remove common words like "agent" and split into words
-            agent_name_words = [w for w in agent_name_lower.split() if w not in ["agent", "the", "a", "an"]]
-            if len(agent_name_words) >= 2:  # Only check if agent name has at least 2 significant words
-                # Check if all significant words appear in text (flexible matching)
-                words_found = sum(1 for word in agent_name_words if word in text_lower)
-                # If most words (at least 2/3) are found, consider it a match
-                if words_found >= max(2, len(agent_name_words) * 2 // 3):
+            # Check for close/exact phrase match: require a distinctive phrase that includes
+            # the agent's distinguishing first word (e.g. "text grading", "image grading").
+            # This avoids false positives when agents share keywords - e.g. "Text Grading & Enhancement"
+            # vs "Image Grading & Enhancement": only "text grading" or "image grading" should match,
+            # not "grading enhancement" which appears in both.
+            agent_name_words = [w for w in re.split(r"[\s&]+", agent_name_lower) if w and w not in ["agent", "the", "a", "an"]]
+            if len(agent_name_words) >= 2:
+                distinguisher = agent_name_words[0]
+                # Phrases starting with the distinguishing word: "text grading", "image grading", etc.
+                distinctive_phrases = [
+                    f"{distinguisher} {agent_name_words[i + 1]}"
+                    for i in range(len(agent_name_words) - 1)
+                    if agent_name_words[i] == distinguisher
+                ]
+                if distinctive_phrases and any(phrase in text_lower for phrase in distinctive_phrases):
                     detected_agents.append(agent_id)
                     found_agent_ids.add(agent_id)
-                    logger.debug(f"Partial match: Found {agent_id} based on {words_found}/{len(agent_name_words)} words")
+                    logger.debug(f"Close phrase match: Found {agent_id} via distinctive phrase")
                     continue
             
             # Check if agent ID (with/without hyphens) appears
@@ -484,7 +491,7 @@ class IntentExtractor:
                 # ),
                 QuickAction(
                     label="Launch Agent",
-                    url="https://common.mysellercentral.com/ai-agents/listing-generation",
+                    url="https://mysellercentral.com/ai-agents/listing-generation",
                     actionType=ActionType.URL,
                     icon="🚀"
                 )
@@ -505,7 +512,7 @@ class IntentExtractor:
                 # ),
                 QuickAction(
                     label="Launch Agent",
-                    url="https://common.mysellercentral.com/ai-agents/text-grading",
+                    url="https://mysellercentral.com/ai-agents/text-grading",
                     actionType=ActionType.URL,
                     icon="🚀"
                 )
@@ -526,7 +533,7 @@ class IntentExtractor:
                 # ),
                 QuickAction(
                     label="Launch Agent",
-                    url="https://common.mysellercentral.com/ai-agents/image-grading",
+                    url="https://mysellercentral.com/ai-agents/image-grading",
                     actionType=ActionType.URL,
                     icon="🚀"
                 )
@@ -547,7 +554,7 @@ class IntentExtractor:
                 # ),
                 QuickAction(
                     label="Launch Agent",
-                    url="https://common.mysellercentral.com/ai-agents/lifestyle-image-generation",
+                    url="https://mysellercentral.com/ai-agents/lifestyle-image-generation",
                     actionType=ActionType.URL,
                     icon="🚀"
                 )
@@ -568,7 +575,7 @@ class IntentExtractor:
                 # ),
                 QuickAction(
                     label="Launch Agent",
-                    url="https://common.mysellercentral.com/ai-agents/infographic-image-generation",
+                    url="https://mysellercentral.com/ai-agents/infographic-image-generation",
                     actionType=ActionType.URL,
                     icon="🚀"
                 )
@@ -589,7 +596,7 @@ class IntentExtractor:
                 # ),
                 QuickAction(
                     label="Launch Agent",
-                    url="https://common.mysellercentral.com/ai-agents/banner-collage-generation",
+                    url="https://mysellercentral.com/ai-agents/banner-collage-generation",
                     actionType=ActionType.URL,
                     icon="🚀"
                 )
@@ -610,7 +617,7 @@ class IntentExtractor:
                 # ),
                 QuickAction(
                     label="Launch Agent",
-                    url="https://common.mysellercentral.com/ai-agents/color-variants",
+                    url="https://mysellercentral.com/ai-agents/color-variants",
                     actionType=ActionType.URL,
                     icon="🚀"
                 )
@@ -631,7 +638,7 @@ class IntentExtractor:
                 # ),
                 QuickAction(
                     label="Launch Agent",
-                    url="https://common.mysellercentral.com/ai-agents/aplus-content",
+                    url="https://mysellercentral.com/ai-agents/aplus-content",
                     actionType=ActionType.URL,
                     icon="🚀"
                 )
@@ -652,7 +659,7 @@ class IntentExtractor:
                 # ),
                 QuickAction(
                     label="Launch Agent",
-                    url="https://common.mysellercentral.com/ai-agents/video-generation",
+                    url="https://mysellercentral.com/ai-agents/video-generation",
                     actionType=ActionType.URL,
                     icon="🚀"
                 )
@@ -673,7 +680,7 @@ class IntentExtractor:
                 # ),
                 QuickAction(
                     label="Launch Agent",
-                    url="https://common.mysellercentral.com/ai-agents/competition-analysis",
+                    url="https://mysellercentral.com/ai-agents/competition-analysis",
                     actionType=ActionType.URL,
                     icon="🚀"
                 )
@@ -790,8 +797,9 @@ class IntentExtractor:
         # Don't treat multiple agents in response as "list all" - user might have asked for specific agents
         # The is_list_all_query flag is already set above based on explicit user keywords
         
-        # product_detail: agent cards are generated only from agents present in the response text
-        if query_category == "product_detail" and reply_text:
+        # product_detail, insights_kb, analytics_reporting: agent cards from agents mentioned in the response text
+        reply_driven_categories = ("product_detail", "insights_kb", "analytics_reporting")
+        if query_category in reply_driven_categories and reply_text:
             if agent_db is None:
                 agent_db = self.get_agent_database(cache_only=cache_only)
             reply_mentioned = self._extract_all_agents_from_text(reply_text, agent_db=agent_db)
@@ -800,7 +808,7 @@ class IntentExtractor:
                 valid_agents = [a for a in valid_agents if a != agent_id]
                 valid_agents.insert(0, agent_id)
             if valid_agents:
-                logger.info(f"product_detail: generating agent cards from reply content: {valid_agents}")
+                logger.info(f"{query_category}: generating agent cards from reply content: {valid_agents}")
                 if len(valid_agents) >= 2 and len(valid_agents) <= 3:
                     suggested_agents = []
                     for aid in valid_agents:
@@ -822,7 +830,7 @@ class IntentExtractor:
                             quickActions=quick_actions
                         ))
                     components.suggestedAgents = suggested_agents
-                    logger.info(f"Added {len(suggested_agents)} agents to suggestedAgents (product_detail, reply-driven)")
+                    logger.info(f"Added {len(suggested_agents)} agents to suggestedAgents ({query_category}, reply-driven)")
                 else:
                     primary_agent_id = valid_agents[0]
                     agent_info = agent_db[primary_agent_id]
@@ -864,7 +872,7 @@ class IntentExtractor:
                                     quickActions=other_quick_actions
                                 ))
                         components.suggestedAgents = suggested_agents
-                    logger.info(f"Added agentCard + {len(components.suggestedAgents or [])} suggestedAgents (product_detail, reply-driven)")
+                    logger.info(f"Added agentCard + {len(components.suggestedAgents or [])} suggestedAgents ({query_category}, reply-driven)")
         
         # Generate agent card for agent suggestions (non–product_detail or when product_detail had no agents in reply)
         elif intent == IntentType.AGENT_SUGGESTION:
