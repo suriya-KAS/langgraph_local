@@ -9,6 +9,7 @@ Handles queries about:
 - Marketplace integrations
 - Product features
 """
+import asyncio
 import os
 import sys
 from typing import Dict, Optional, List, Any
@@ -196,6 +197,63 @@ Respond in {language}.
 Remember to address the user by their name ({username}) naturally throughout your responses."""
 
 
+# Lightweight prompts for analytics/insights → product_detail (agent suggestions only).
+# No KB retrieval, no personalization, no chat memory — reduces token waste.
+
+# Analytics reporting → product_detail: sales, revenue, inventory, metrics
+ANALYTICS_TO_PRODUCT_SUGGESTION_PROMPT = """You are the MySellerCentral assistant. Read the analytics data below (sales, revenue, inventory, best-selling products, or metrics from the seller's account) and suggest relevant MySellerCentral AI agents that could help them improve performance.
+
+## Use case
+Analytics data = sales numbers, revenue, inventory levels, best sellers, quarter comparisons, stock alerts. Your job: suggest agents that can help turn these metrics around or grow them.
+
+## What to do
+1. Read ONLY the analytics content provided in the user message.
+2. Suggest 2–4 MySellerCentral agents that could help (e.g. Smart Listing to boost conversions, Text/Image Grading to improve listing quality, A+ Content for premium presentation, Competition Alerts to stay ahead).
+3. Frame it as: if they want to improve their sales, revenue, or grow their business, you can suggest these agents.
+4. Keep it concise — bullet points only. Use Markdown: **bold** for agent names.
+
+## Agent IDs (use EXACTLY these)
+- smart-listing, text-grading-enhancement, image-grading-enhancement
+- banner-image-generator, lifestyle-image-generator, infographic-image-generator
+- a-plus-content, a-plus-video-content, competition-alerts, color-variants-generator
+
+## Output
+Write 2–4 bullet suggestions, then end with:
+```json
+{{"intent": "agent_suggestion", "agentId": "agent-id"}}
+```
+Use the single best-matching agent in agentId, or null if none fit. Respond in {language}."""
+
+# Insights KB → product_detail: category insights, ASIN performance, listing analysis
+# Strategy: Show only top 5–8 insights as a teaser; upsell agents for deeper/actionable analysis.
+INSIGHTS_TO_PRODUCT_SUGGESTION_PROMPT = """You are the MySellerCentral assistant. Read the insights below (category insights, ASIN performance, or listing analysis) and prepare a response that drives users to our paid agents.
+
+## Business goal
+1. Show only the **top 5–8** most valuable insights from the content — do not dump everything.
+2. After those insights, add a clear upsell: if they want deeper analysis, actionable recommendations, or to implement these insights, they should use our AI agents.
+3. Suggest 2–4 relevant MySellerCentral agents they can use (and pay for) to act on the insights.
+
+## What to do
+1. Read the insights content provided in the user message.
+2. **Extract and list only the top 5–8 insights** — the most impactful ones. Use bullet points. Be concise.
+3. Add a short paragraph: "To dive deeper, get actionable recommendations, or implement these insights, use our AI agents:" and then list 2–4 agents with brief value props.
+4. Use Markdown: **bold** for agent names and key terms. Keep the overall response scannable.
+
+## Agent IDs (use EXACTLY these when suggesting)
+- smart-listing, text-grading-enhancement, image-grading-enhancement
+- banner-image-generator, lifestyle-image-generator, infographic-image-generator
+- a-plus-content, a-plus-video-content, competition-alerts, color-variants-generator
+
+## Output
+1. Top 5–8 insights (bullets)
+2. Upsell line + 2–4 agent suggestions with one-line value props
+3. End with JSON block:
+```json
+{{"intent": "agent_suggestion", "agentId": "agent-id"}}
+```
+Use the single best-matching agent in agentId, or null if none fit. Respond in {language}."""
+
+
 def format_docs(docs):
     """Format retrieved documents into a string."""
     logger.debug(f"Formatting {len(docs)} documents")
@@ -308,6 +366,84 @@ class ProductDetailCategory(BaseCategory):
         # This ensures all queries have a handler
         return True
     
+    async def process_suggestion_query(
+        self,
+        previous_content: str,
+        source: str,
+        context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Process analytics/insights output to suggest relevant MySellerCentral agents.
+        Uses a lightweight prompt (no KB retrieval, no personalization) to reduce token waste.
+
+        Args:
+            previous_content: The analytics data or insights output from the previous engine
+            source: "analytics" or "insights" — for logging
+            context: Optional context (language only; username/payload not needed)
+
+        Returns:
+            Dict with reply, intent, agentId, token counts, category (same shape as process_query)
+        """
+        try:
+            language = context.get("language", "English") if context else "English"
+
+            # Select prompt by source: analytics (sales/revenue/inventory) vs insights (category/ASIN/listing)
+            if source == "analytics":
+                system_prompt_template = ANALYTICS_TO_PRODUCT_SUGGESTION_PROMPT
+            elif source == "insights":
+                system_prompt_template = INSIGHTS_TO_PRODUCT_SUGGESTION_PROMPT
+            else:
+                logger.warning(f"[process_suggestion_query] Unknown source '{source}', defaulting to analytics prompt")
+                system_prompt_template = ANALYTICS_TO_PRODUCT_SUGGESTION_PROMPT
+
+            formatted_system = system_prompt_template.format(language=language)
+            user_message = f"Content from {source}:\n\n{previous_content[:2000]}"
+
+            formatted_messages, _ = format_messages_for_llm(
+                chat_messages=[],
+                system_prompt=formatted_system,
+                freeform_text=user_message
+            )
+
+            def invoke_gemini_sync():
+                return invoke_gemini_with_tokens(
+                    formatted_messages=formatted_messages,
+                    system_prompt=formatted_system,
+                    max_tokens=500,
+                    temperature=0.1,
+                )
+
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            response, input_tokens, output_tokens = await loop.run_in_executor(
+                None, invoke_gemini_sync
+            )
+
+            structured = parse_structured_response(response)
+            clean_reply = clean_response_text(response, structured)
+
+            result = {
+                "reply": clean_reply,
+                "intent": structured.get("intent", "agent_suggestion") if structured else "agent_suggestion",
+                "agentId": structured.get("agentId") if structured and structured.get("agentId") else None,
+                "raw_response": response,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "category": self.category_id,
+            }
+            logger.info(
+                f"[product_suggestion] {source} → product_detail: intent={result['intent']}, "
+                f"agentId={result['agentId']}, input_tokens={input_tokens}, output_tokens={output_tokens}"
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Error in process_suggestion_query: {e}", exc_info=True)
+            raise Exception(f"Error processing suggestion query: {str(e)}")
+
     async def process_query(
         self,
         user_message: str,

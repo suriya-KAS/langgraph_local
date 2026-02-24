@@ -96,7 +96,8 @@ class ConversationStorage:
         message_type: str = "text",
         user_request: Optional[Dict[str, Any]] = None,
         input_tokens: Optional[int] = None,
-        timestamp: Optional[datetime] = None
+        timestamp: Optional[datetime] = None,
+        processing_content: Optional[str] = None
     ) -> Optional[str]:
         """
         Save a user message to the messages collection.
@@ -104,11 +105,13 @@ class ConversationStorage:
         Args:
             conversation_id: Conversation identifier
             user_id: User identifier
-            content: Message content
+            content: Message content (display text shown in chat UI)
             message_type: Type of message (text, voice, image)
             user_request: Additional user request data
             input_tokens: Number of input tokens for this user message (optional)
             timestamp: Message timestamp (defaults to now)
+            processing_content: The actual message used for backend processing (e.g. with category IDs).
+                                Stored only when it differs from content.
             
         Returns:
             Message ID if successful, None otherwise
@@ -121,7 +124,8 @@ class ConversationStorage:
                 message_type=message_type,
                 user_request=user_request,
                 input_tokens=input_tokens,
-                timestamp=timestamp
+                timestamp=timestamp,
+                processing_content=processing_content
             )
             
             if message_id:
@@ -149,6 +153,7 @@ class ConversationStorage:
         assistant_response: Optional[Dict[str, Any]] = None,
         agent_card: Optional[Dict[str, Any]] = None,
         suggested_agents: Optional[List[Dict[str, Any]]] = None,
+        category_mapper_cards: Optional[List[Dict[str, Any]]] = None,
         quick_actions: Optional[List[Dict[str, Any]]] = None,
         analytics_data: Optional[Dict[str, Any]] = None,
         processing: Optional[Dict[str, Any]] = None,
@@ -168,6 +173,7 @@ class ConversationStorage:
             assistant_response: Assistant response metadata
             agent_card: Agent card component data
             suggested_agents: Alternative agent suggestions
+            category_mapper_cards: Category mapper cards for insights_kb (marketplace cards with category paths)
             quick_actions: Quick action buttons
             analytics_data: Analytics data (visualization, table_data, generated_sql, etc.)
             processing: Processing metadata (modelVersion, tokensUsed, latencyMs, requestId)
@@ -187,6 +193,7 @@ class ConversationStorage:
                 assistant_response=assistant_response,
                 agent_card=agent_card,
                 suggested_agents=suggested_agents,
+                category_mapper_cards=category_mapper_cards,
                 quick_actions=quick_actions,
                 analytics_data=analytics_data,
                 processing=processing,

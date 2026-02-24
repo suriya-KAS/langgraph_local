@@ -114,10 +114,12 @@ class AnalyticsReportingCategory(BaseCategory):
             logger.info(f"Using marketplaces_registered: {marketplaces_registered}")
                         
             # Prepare request payload
+            # include_data: true ensures full table_data (all rows); otherwise API returns only first 10 rows
             payload = {
                 "message": user_message,
                 "user_id": user_id,
-                "marketplaces_registered": marketplaces_registered
+                "marketplaces_registered": marketplaces_registered,
+                "include_data": True,
             }
             
             logger.info(f"Calling analytics API: {ANALYTICS_API_URL}")

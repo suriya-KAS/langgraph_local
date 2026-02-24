@@ -62,11 +62,12 @@ class ChatContext(BaseModel):
 
 class SendMessageRequest(BaseModel):
     """Request model for sending a chat message"""
-    message: str = Field(..., min_length=1, description="User's message")
+    message: str = Field(..., min_length=1, description="User's message (used for processing)")
     conversationId: str = Field(..., description="Conversation identifier")
     messageType: MessageType = Field(default=MessageType.TEXT, description="Type of message")
     context: ChatContext = Field(..., description="Request context")
     language: Optional[str] = Field(default="English", description="Response language")
+    displayContent: Optional[str] = Field(None, description="Optional user-facing text to store/display instead of message (e.g. from quick action displayMessage)")
 
 
 # ============================================================================
@@ -92,10 +93,21 @@ class AgentCard(BaseModel):
 class QuickAction(BaseModel):
     """Quick action button component"""
     label: str = Field(..., description="Button label")
-    message: Optional[str] = Field(None, description="Message to send when clicked")
+    message: Optional[str] = Field(None, description="Message to send when clicked (used for backend processing)")
+    displayMessage: Optional[str] = Field(None, description="User-facing text to show in chat; when sent as displayContent, backend stores this instead of message")
     url: Optional[str] = Field(None, description="URL to navigate to")
     actionType: ActionType = Field(default=ActionType.MESSAGE, description="Type of action")
     icon: Optional[str] = Field(None, description="Optional icon for the action")
+
+
+class CategoryMapperCard(BaseModel):
+    """Category mapper card (marketplace + category paths); no pricing/agent fields."""
+    name: str = Field(..., description="Marketplace display name")
+    features: List[str] = Field(default_factory=list, description="Key features (e.g. category count)")
+    action: str = Field(default="message", description="Action to take")
+    marketplace: Optional[List[str]] = Field(default_factory=list, description="Marketplace ids (e.g. amazon.in)")
+    description: Optional[str] = Field(None, description="Card description")
+    quickActions: Optional[List[QuickAction]] = Field(default_factory=list, description="Quick action buttons for category paths")
 
 
 class MessageComponents(BaseModel):
@@ -103,6 +115,7 @@ class MessageComponents(BaseModel):
     agentCard: Optional[AgentCard] = Field(None, description="Primary agent suggestion")
     suggestedAgents: Optional[List[AgentCard]] = Field(default_factory=list, description="Alternative agent suggestions")
     quickActions: Optional[List[QuickAction]] = Field(default_factory=list, description="Quick action buttons")
+    categoryMapperCards: Optional[List[CategoryMapperCard]] = Field(default_factory=list, description="Category mapper cards for insights_kb (marketplace cards with category paths)")
     pricingInfo: Optional[Dict[str, Any]] = Field(None, description="Pricing information if pricing query")
     marketplaceInfo: Optional[Dict[str, Any]] = Field(None, description="Marketplace information if marketplace query")
     analyticsData: Optional[Dict[str, Any]] = Field(None, description="Analytics data including visualization, SQL, table data, etc.")

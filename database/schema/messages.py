@@ -47,7 +47,8 @@ class MongoDBService:
         message_type: str = "text",
         user_request: Optional[Dict[str, Any]] = None,
         input_tokens: Optional[int] = None,
-        timestamp: Optional[datetime] = None
+        timestamp: Optional[datetime] = None,
+        processing_content: Optional[str] = None
     ) -> Optional[str]:
         """
         Save a user message to MongoDB.
@@ -55,11 +56,14 @@ class MongoDBService:
         Args:
             conversation_id: Conversation identifier (must match pattern: conv_[16 hex chars])
             user_id: User identifier (must match pattern: user_[alphanumeric_underscore])
-            content: Message content
+            content: Message content (display text shown in chat UI)
             message_type: Type of message (text, voice, image)
             user_request: Additional user request data
             input_tokens: Number of input tokens for this user message (optional)
             timestamp: Message timestamp (defaults to now)
+            processing_content: The actual message used for backend processing (e.g. with category IDs).
+                                Stored only when it differs from content (i.e. quick action displayContent vs message).
+                                Used by memory layer to give the LLM full context including IDs.
             
         Returns:
             Message ID if successful, None otherwise
@@ -79,6 +83,9 @@ class MongoDBService:
                 "timestamp": timestamp or now,
                 "createdAt": now,
             }
+            
+            if processing_content and processing_content.strip() != content.strip():
+                message_doc["processingContent"] = processing_content
             
             # Add optional fields
             if user_request:
@@ -114,6 +121,7 @@ class MongoDBService:
         assistant_response: Optional[Dict[str, Any]] = None,
         agent_card: Optional[Dict[str, Any]] = None,
         suggested_agents: Optional[List[Dict[str, Any]]] = None,
+        category_mapper_cards: Optional[List[Dict[str, Any]]] = None,
         quick_actions: Optional[List[Dict[str, Any]]] = None,
         analytics_data: Optional[Dict[str, Any]] = None,
         processing: Optional[Dict[str, Any]] = None,
@@ -175,6 +183,9 @@ class MongoDBService:
             
             if suggested_agents:
                 message_doc["suggestedAgents"] = suggested_agents
+            
+            if category_mapper_cards:
+                message_doc["categoryMapperCards"] = category_mapper_cards
             
             if quick_actions:
                 message_doc["quickActions"] = quick_actions

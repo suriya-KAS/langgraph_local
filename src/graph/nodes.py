@@ -13,7 +13,7 @@ Graph flow (matching the architecture diagram):
           ├─ product_detail         → product_detail_engine  → build_response → END
           ├─ recommendation_engine  → recommendation_engine  → build_response → END
           ├─ out_of_scope           → out_of_scope_engine    → build_response → END
-          ├─ insights_kb            → insights_kb_engine     → build_response → END
+          ├─ insights_kb            → insights_kb_engine → route: insights_api → product_suggestion → build_response; category_mapper → build_response → END
           └─ analytics_reporting    → work_status_node       → route:
                                         ├─ exit     → build_response → END
                                         └─ continue → analytics_engine
@@ -100,7 +100,16 @@ async def user_intent_node(state: ChatState) -> dict:
     # ── Step 2: Classify intent + enrich query ────────────────
     orchestrator = _get_orchestrator()
     intent_hint = context.get("intent")
-    category_id, enriched_query, asins = await orchestrator.find_user_intent(
+    (
+        category_id,
+        enriched_query,
+        asins,
+        category_name,
+        query_category_id,
+        marketplace_from_query,
+        user_needs,
+        requires_long_term_memory,
+    ) = await orchestrator.find_user_intent(
         user_message, intent_hint, chat_history, user_context,
     )
 
@@ -118,6 +127,11 @@ async def user_intent_node(state: ChatState) -> dict:
             "enriched_query": enriched_query,
             "asins": asins,
             "user_context": user_context,
+            "category_name": category_name,
+            "query_category_id": query_category_id,
+            "marketplace_from_query": marketplace_from_query,
+            "user_needs": user_needs,
+            "requires_long_term_memory": requires_long_term_memory,
             "early_exit": True,
             "early_exit_result": {
                 **mp_error,
@@ -156,6 +170,11 @@ async def user_intent_node(state: ChatState) -> dict:
                         "enriched_query": enriched_query,
                         "asins": asins,
                         "user_context": user_context,
+                        "category_name": category_name,
+                        "query_category_id": query_category_id,
+                        "marketplace_from_query": marketplace_from_query,
+                        "user_needs": user_needs,
+                        "requires_long_term_memory": requires_long_term_memory,
                         "early_exit": True,
                         "early_exit_result": {
                             "reply": reply,
@@ -184,6 +203,11 @@ async def user_intent_node(state: ChatState) -> dict:
         "enriched_query": enriched_query,
         "asins": asins,
         "user_context": user_context,
+        "category_name": category_name,
+        "query_category_id": query_category_id,
+        "marketplace_from_query": marketplace_from_query,
+        "user_needs": user_needs,
+        "requires_long_term_memory": requires_long_term_memory,
         "early_exit": False,
     }
 
@@ -333,6 +357,10 @@ async def insights_kb_engine_node(state: ChatState) -> dict:
 
     context = dict(state.get("context") or {})
     context["asins"] = state.get("asins", [])
+    context["category_name"] = state.get("category_name")
+    context["query_category_id"] = state.get("query_category_id")
+    context["marketplace_from_query"] = state.get("marketplace_from_query")
+    context["user_needs"] = state.get("user_needs")
 
     logger.info("[insights_kb_engine] Processing query")
     result = await engine.process_query(
@@ -349,42 +377,41 @@ async def insights_kb_engine_node(state: ChatState) -> dict:
 
 async def product_suggestion_node(state: ChatState) -> dict:
     """
-    Agent-to-agent communication: **analytics_reporting → product_detail**.
+    Agent-to-agent communication: **analytics_reporting** or **insights_kb** → product_detail.
 
-    Takes the analytics engine output and passes it to the Product Detail
-    engine to generate product-related suggestions (relevant AI agents,
-    tools, or features) based on the analytics data.
+    Takes the engine output (analytics or insights) and passes it to the Product Detail
+    engine to generate product-related suggestions (relevant AI agents, tools, or features).
 
-    This is the "agent 2 agent communication" described in the architecture:
-    after analytics_reporting produces its output, that output feeds into
-    product_detail to get actionable product suggestions.
+    - For analytics_reporting: uses analytics data to suggest agents/tools for metrics.
+    - For insights_kb: uses category/ASIN insights to suggest agents/tools for listing/category improvement.
     """
     engine_result: dict = state.get("engine_result", {})
-    analytics_reply: str = engine_result.get("reply", "")
+    reply: str = engine_result.get("reply", "")
 
-    if not analytics_reply or not analytics_reply.strip():
-        logger.info("[product_suggestion] No analytics reply — skipping suggestions")
+    if not reply or not reply.strip():
+        logger.info("[product_suggestion] No engine reply — skipping suggestions")
         return {"product_suggestion": {}}
+
+    category = state.get("category", "")
 
     categories = _get_categories()
     product_detail = categories["product_detail"]
 
-    # Build a suggestion query that includes analytics context
-    suggestion_query = (
-        "Based on the following analytics data from the user's account, "
-        "suggest relevant MySellerCentral AI agents or tools that could help "
-        "improve their metrics or address any issues found in the data. "
-        "Keep the suggestion concise (2-4 bullet points max).\n\n"
-        f"Analytics Data:\n{analytics_reply[:2000]}"  # Limit to avoid token overflow
-    )
+    if category == "analytics_reporting":
+        source = "analytics"
+    elif category == "insights_kb":
+        source = "insights"
+    else:
+        logger.info(f"[product_suggestion] Unknown category '{category}' — skipping suggestions")
+        return {"product_suggestion": {}}
 
     context = dict(state.get("context") or {})
 
-    logger.info("[product_suggestion] Generating product suggestions from analytics output")
+    logger.info(f"[product_suggestion] Generating product suggestions from {source} output (lightweight prompt)")
     try:
-        suggestion_result = await product_detail.process_query(
-            user_message=suggestion_query,
-            chat_history=None,  # No chat history needed for suggestion
+        suggestion_result = await product_detail.process_suggestion_query(
+            previous_content=reply,
+            source=source,
             context=context,
         )
         logger.info("[product_suggestion] Suggestions generated successfully")
@@ -429,10 +456,11 @@ async def build_response_node(state: ChatState) -> dict:
         existing_notice = result.get("notice")
         result["notice"] = f"{existing_notice}\n{route_notice}" if existing_notice else route_notice
 
-    # ── Case 3: Append product suggestion (agent-to-agent) ────
+    # ── Case 3: Product suggestion (agent-to-agent) ────
     product_suggestion: dict = state.get("product_suggestion", {})
     if product_suggestion and product_suggestion.get("reply"):
         suggestion_text = product_suggestion["reply"]
+        category = result.get("category", "product_detail")
 
         # Store as separate field for frontend flexibility
         result["product_suggestion"] = {
@@ -441,15 +469,18 @@ async def build_response_node(state: ChatState) -> dict:
             "agentId": product_suggestion.get("agentId"),
         }
 
-        # Also append to the main reply for immediate display
-        main_reply = result.get("reply", "")
-        if main_reply:
-            result["reply"] = (
-                f"{main_reply}\n\n"
-                f"---\n\n"
-                f"**Suggested Tools & Agents:**\n\n{suggestion_text}"
-            )
-        logger.info("[build_response] Product suggestions appended to analytics reply")
+        if category == "insights_kb":
+            # insights_kb: show only product_detail refined response (top 5-8 insights + agent upsell)
+            result["reply"] = suggestion_text
+            result["intent"] = product_suggestion.get("intent", result.get("intent"))
+            result["agentId"] = product_suggestion.get("agentId")
+            logger.info("[build_response] insights_kb: using product_detail response only")
+        else:
+            # analytics_reporting: append product suggestions to main reply
+            main_reply = result.get("reply", "")
+            if main_reply:
+                result["reply"] = f"{main_reply}\n\n{suggestion_text}"
+            logger.info("[build_response] Product suggestions appended to reply")
 
     logger.info(
         f"[build_response] Final result — category: {result.get('category')}, "
@@ -499,3 +530,18 @@ def route_after_work_status(state: ChatState) -> str:
     if state.get("early_exit") or state.get("work_status_all_unavailable"):
         return "exit"
     return "continue"
+
+
+def route_after_insights_kb(state: ChatState) -> str:
+    """
+    Conditional router after ``insights_kb_engine_node``.
+
+    Only when insights came from INSIGHTS_API_URL (user provided category ID),
+    route to product_suggestion for enhanced output. When insights came from
+    CATEGORY_MAPPER_URL (leaf nodes only), skip product_detail and go to build_response.
+    """
+    engine_result = state.get("engine_result", {})
+    source = engine_result.get("insights_source", "")
+    if source == "insights_api":
+        return "product_suggestion"
+    return "build_response"

@@ -25,7 +25,9 @@ from src.core.models import (
     IntentType,
     MessageComponents,
     QuickAction,
-    ActionType
+    ActionType,
+    AgentCard,
+    CategoryMapperCard,
 )
 from src.core.backend import my_chatbot_async, modelID
 # Wallet service no longer needed - balance comes from request payload
@@ -187,14 +189,16 @@ async def send_message(request: SendMessageRequest):
         wallet_balance = request.context.wallet_balance if request.context.wallet_balance is not None else 0.0
         logger.info(f"Wallet balance from request context: {wallet_balance} for user: {request.context.userId}")
         
-        # 1.5. Save user message to database
+        # 1.5. Save user message to database (use displayContent for storage/display when provided, e.g. from quick action)
+        user_message_content = (request.displayContent or request.message).strip() if request.displayContent else request.message
         if conversation_storage and conversation_id:
             try:
                 user_message_id = await conversation_storage.save_user_message(
                     conversation_id=conversation_id,
                     user_id=request.context.userId,
-                    content=request.message,
-                    message_type=request.messageType.value if hasattr(request.messageType, 'value') else str(request.messageType)
+                    content=user_message_content,
+                    message_type=request.messageType.value if hasattr(request.messageType, 'value') else str(request.messageType),
+                    processing_content=request.message if request.displayContent else None
                 )
                 if user_message_id:
                     logger.debug(f"Saved user message: {user_message_id}")
@@ -377,51 +381,123 @@ async def send_message(request: SendMessageRequest):
                     logger.info(f"Built ASIN selection components: {len(asin_buttons)} quick actions")
                 else:
                     components = None
+            # 5a. insights_kb: use category_path quick actions from category-mapper API
+            elif isinstance(llm_result, dict) and query_category == 'insights_kb' and llm_result.get('components'):
+                raw_components = llm_result['components']
+                
+                # Check if we have categoryMapperCards (marketplace cards with category paths)
+                category_mapper_cards_list = raw_components.get('categoryMapperCards') or []
+                # Backward compatibility: also check suggestedAgents for old format
+                if not category_mapper_cards_list:
+                    category_mapper_cards_list = raw_components.get('suggestedAgents') or []
+                
+                if category_mapper_cards_list:
+                    # Create CategoryMapperCard objects for each marketplace (no agentId, icon, cost, currency, wallet)
+                    mapper_cards = []
+                    for card_data in category_mapper_cards_list:
+                        if isinstance(card_data, dict):
+                            quick_actions = [
+                                QuickAction(
+                                    label=qa.get('label', ''),
+                                    message=qa.get('message', qa.get('label', '')),
+                                    displayMessage=qa.get('displayMessage'),
+                                    actionType=ActionType.MESSAGE,
+                                )
+                                for qa in (card_data.get('quickActions') or [])
+                                if isinstance(qa, dict)
+                            ]
+                            mapper_card = CategoryMapperCard(
+                                name=card_data.get('name', ''),
+                                features=card_data.get('features', []),
+                                action=card_data.get('action', 'message'),
+                                marketplace=card_data.get('marketplace', []),
+                                description=card_data.get('description', ''),
+                                quickActions=quick_actions,
+                            )
+                            mapper_cards.append(mapper_card)
+                    
+                    components = MessageComponents(categoryMapperCards=mapper_cards)
+                    logger.info(f"Built insights_kb category mapper cards: {len(mapper_cards)} cards with category paths")
+                else:
+                    # Fallback to quickActions (backward compatibility)
+                    qa_list = raw_components.get('quickActions') or []
+                    if qa_list:
+                        quick_actions = [
+                            QuickAction(
+                                label=qa.get('label', ''),
+                                message=qa.get('message', qa.get('label', '')),
+                                displayMessage=qa.get('displayMessage'),
+                                actionType=ActionType.MESSAGE,
+                            )
+                            for qa in qa_list
+                            if isinstance(qa, dict)
+                        ]
+                        components = MessageComponents(quickActions=quick_actions)
+                        logger.info(f"Built insights_kb category path components: {len(quick_actions)} quick actions")
+                    else:
+                        components = None
             elif isinstance(llm_result, dict):
                 components = None
             else:
                 components = None
             
-            # 5b. Generate components - only for categories that might need agent cards (skip if already set e.g. ASIN buttons)
+            # 5b. Generate components - agent cards can appear for any intent when agents are mentioned in the reply
+            # Categories that can show agent cards (from reply content): product_detail, ai_content_generation, insights_kb, analytics_reporting
+            CATEGORIES_WITH_AGENT_CARDS = ['product_detail', 'ai_content_generation', 'insights_kb', 'analytics_reporting']
             if components is None:
-                # Skip component generation for categories that don't need agents
-                AGENT_REQUIRED_CATEGORIES = ['product_detail', 'ai_content_generation']
-                # For legacy format (query_category is None), only generate components if intent suggests agent
-                if query_category in AGENT_REQUIRED_CATEGORIES or (query_category is None and component_intent == IntentType.AGENT_SUGGESTION):
-                    # Generate components - use component_intent (LLM's original intent) for component generation
-                    # This ensures agent cards are generated when LLM detects agent_suggestion
-                    # Pass pre-fetched agent_db to avoid repeated calls
-                    # If agent_db wasn't fetched yet (legacy format without agent requirement), fetch it now
+                # Generate components (including agent cards from reply) for any category that can show agents
+                if query_category in CATEGORIES_WITH_AGENT_CARDS or (query_category is None and component_intent == IntentType.AGENT_SUGGESTION):
                     if agent_db is None:
                         agent_db = intent_extractor.get_agent_database(cache_only=True)
                         logger.info(f"✅ OPTIMIZATION: Fetched agent_db for component generation ({len(agent_db)} agents) - will be reused")
                     components = intent_extractor.generate_components(
-                        intent=component_intent,  # Use LLM's original intent for component generation
+                        intent=component_intent,
                         llm_response=llm_reply,
                         wallet_balance=wallet_balance,
                         user_message=request.message,
-                        agent_id=agent_id,  # Pass pre-extracted agent_id if available
-                        llm_agent_ids=llm_agent_ids,  # Pass all agents from LLM response
-                        currency=user_currency,  # Pass detected currency
-                        country=request.context.clientInfo.country,  # Pass country for reference
-                        timezone=request.context.clientInfo.timezone,  # Pass timezone for reference
-                        cache_only=True,  # Use cache only for agent cards, no KB query
-                        agent_db=agent_db,  # Pass pre-fetched agent_db to avoid repeated calls
-                        query_category=query_category,  # product_detail → agent cards from reply content only
+                        agent_id=agent_id,
+                        llm_agent_ids=llm_agent_ids,
+                        currency=user_currency,
+                        country=request.context.clientInfo.country,
+                        timezone=request.context.clientInfo.timezone,
+                        cache_only=True,
+                        agent_db=agent_db,
+                        query_category=query_category,
                     )
-                    # Add analytics data to components if available (even for agent categories)
                     if analytics_data and components:
                         components.analyticsData = analytics_data
                         logger.info("Added analytics data to existing components")
                 else:
-                    # For analytics_reporting category, create components with analytics data
                     if query_category == 'analytics_reporting' and analytics_data:
                         logger.info("Creating components for analytics_reporting category with analytics data")
                         components = MessageComponents(analyticsData=analytics_data)
                     else:
-                        # No components needed for non-agent categories
-                        logger.debug(f"Skipping component generation for {query_category} (not an agent-required category)")
+                        logger.debug(f"Skipping component generation for {query_category} (not a category that shows agent cards)")
                         components = None
+            # 5c. When we already have components (e.g. insights_kb categoryMapperCards) but reply mentions agents, merge agent cards
+            elif query_category in ('insights_kb', 'analytics_reporting'):
+                if agent_db is None:
+                    agent_db = intent_extractor.get_agent_database(cache_only=True)
+                agent_components = intent_extractor.generate_components(
+                    intent=component_intent,
+                    llm_response=llm_reply,
+                    wallet_balance=wallet_balance,
+                    user_message=request.message,
+                    agent_id=agent_id,
+                    llm_agent_ids=llm_agent_ids or [],
+                    currency=user_currency,
+                    country=request.context.clientInfo.country,
+                    timezone=request.context.clientInfo.timezone,
+                    cache_only=True,
+                    agent_db=agent_db,
+                    query_category=query_category,
+                )
+                if agent_components and (agent_components.agentCard or (agent_components.suggestedAgents and len(agent_components.suggestedAgents) > 0)):
+                    if agent_components.agentCard:
+                        components.agentCard = agent_components.agentCard
+                    if agent_components.suggestedAgents:
+                        components.suggestedAgents = agent_components.suggestedAgents
+                    logger.info("Merged agent cards into existing components (reply mentioned agents)")
             if components:
                 logger.info("Components generated successfully")
             else:
@@ -511,6 +587,7 @@ async def send_message(request: SendMessageRequest):
                 # Convert components to dict format for storage
                 agent_card_dict = None
                 suggested_agents_list = None
+                category_mapper_cards_list = None
                 quick_actions_list = None
                 analytics_data_dict = None
 
@@ -534,6 +611,7 @@ async def send_message(request: SendMessageRequest):
                                 {
                                     "label": qa.label,
                                     "message": qa.message,
+                                    "displayMessage": qa.displayMessage,
                                     "url": qa.url,
                                     "actionType": qa.actionType.value if hasattr(qa.actionType, 'value') else str(qa.actionType),
                                     "icon": qa.icon
@@ -554,9 +632,29 @@ async def send_message(request: SendMessageRequest):
                                 "features": agent.features,
                                 "action": agent.action,
                                 "marketplace": agent.marketplace,
-                                "description": agent.description
+                                "description": agent.description,
+                                "quickActions": [
+                                    {"label": qa.label, "message": qa.message, "displayMessage": qa.displayMessage, "actionType": (qa.actionType.value if hasattr(qa.actionType, "value") else str(qa.actionType))}
+                                    for qa in (agent.quickActions or [])
+                                ] if agent.quickActions else None,
                             }
                             for agent in components.suggestedAgents
+                        ]
+                    
+                    if components.categoryMapperCards:
+                        category_mapper_cards_list = [
+                            {
+                                "name": card.name,
+                                "features": card.features,
+                                "action": card.action,
+                                "marketplace": card.marketplace,
+                                "description": card.description,
+                                "quickActions": [
+                                    {"label": qa.label, "message": qa.message, "displayMessage": qa.displayMessage, "actionType": (qa.actionType.value if hasattr(qa.actionType, "value") else str(qa.actionType))}
+                                    for qa in (card.quickActions or [])
+                                ] if card.quickActions else None,
+                            }
+                            for card in components.categoryMapperCards
                         ]
                     
                     if components.quickActions:
@@ -564,6 +662,7 @@ async def send_message(request: SendMessageRequest):
                             {
                                 "label": qa.label,
                                 "message": qa.message,
+                                "displayMessage": qa.displayMessage,
                                 "url": qa.url,
                                 "actionType": qa.actionType.value if hasattr(qa.actionType, 'value') else str(qa.actionType),
                                 "icon": qa.icon
@@ -596,6 +695,7 @@ async def send_message(request: SendMessageRequest):
                     assistant_response=assistant_response,
                     agent_card=agent_card_dict,
                     suggested_agents=suggested_agents_list,
+                    category_mapper_cards=category_mapper_cards_list,
                     quick_actions=quick_actions_list,
                     analytics_data=analytics_data_dict,
                     processing=processing_dict,

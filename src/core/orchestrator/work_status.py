@@ -59,7 +59,21 @@ CAPABILITIES: Dict[str, Dict[str, Dict[str, str]]] = {
     },
     "insights_kb": {
         "Amazon.com": {"status": "available"},
-        "Amazon.in":  {"status": "in_development"},
+        "Amazon.in":  {"status": "available"},
+        "Amazon.co.uk":        {"status": "in_development"},
+        "Amazon.ca":           {"status": "in_development"},
+        "Amazon.com.mx":       {"status": "in_development"},
+        "Amazon.ae":           {"status": "in_development"},
+        "vendorcentral.amazon.com": {"status": "in_development"},
+        "www.vendorcentral.in":     {"status": "in_development"},
+        "Flipkart.com":        {"status": "in_development"},
+        "Walmart.com":         {"status": "in_development"},
+        "Shopify.com":         {"status": "in_development"},
+        "Shopify.com/in":      {"status": "in_development"},
+        "Shopify.in":          {"status": "in_development"},
+        "Shopclues":           {"status": "in_development"},
+        "Ondc":                {"status": "in_development"},
+        "ebay.com":            {"status": "in_development"},
     },
 }
 

@@ -33,3 +33,5 @@ Thumbs.db
 
 # Jupyter checkpoints (optional: remove if you want to track notebooks)
 .ipynb_checkpoints/
+*.png
+*.ipynb

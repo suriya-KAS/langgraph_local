@@ -62,7 +62,7 @@ async def summarize_messages(messages: List[Dict[str, Any]]) -> Optional[str]:
         conversation_text = ""
         for msg in messages:
             role = msg.get("role", "unknown")
-            content = msg.get("content", "")
+            content = msg.get("processingContent") or msg.get("content", "")
             conversation_text += f"{role.capitalize()}: {content}\n\n"
         
         # Create e-commerce focused summarization prompt
@@ -332,7 +332,11 @@ async def get_conversation_context(conversation_id: str, current_user_message: s
             context_messages = []
             for msg in all_messages:
                 role = msg.get("role", "unknown")
-                content = msg.get("content", "")
+                # For user messages from quick actions, processingContent has the
+                # actual message with IDs (e.g. category IDs) while content has the
+                # human-readable display text. The LLM needs the processing version
+                # to resolve follow-up references like "and description analysis?".
+                content = msg.get("processingContent") or msg.get("content", "")
                 if role in ["user", "assistant"] and content:
                     context_messages.append({
                         "role": role,
@@ -385,7 +389,7 @@ async def get_conversation_context(conversation_id: str, current_user_message: s
         # Add recent messages to context
         for msg in recent_messages:
             role = msg.get("role", "unknown")
-            content = msg.get("content", "")
+            content = msg.get("processingContent") or msg.get("content", "")
             if role in ["user", "assistant"] and content:
                 context_messages.append({
                     "role": role,

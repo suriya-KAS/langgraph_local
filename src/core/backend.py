@@ -220,7 +220,7 @@ def invoke_gemini_with_tokens(
     return response_text, input_tokens, output_tokens
 
 
-async def my_chatbot_async(language, freeform_text, chat_history=None, username=None, user_id=None, context=None):
+async def my_chatbot_async(language, freeform_text, chat_history=None, username=None, user_id=None, context=None, return_flow=False):
     """
     Async version of chatbot function for concurrent request handling.
     Uses the **LangGraph workflow** to classify intent, route to the
@@ -236,7 +236,8 @@ async def my_chatbot_async(language, freeform_text, chat_history=None, username=
         context: Additional context dict (optional, will be merged with base context)
     
     Returns:
-        Dict with keys: 'reply' (str), 'intent' (str), 'agentId' (str|None), 'category' (str)
+        Dict with keys: 'reply' (str), 'intent' (str), 'agentId' (str|None), 'category' (str).
+        If return_flow=True, also includes 'langgraph_flow' with node-by-node flow summary.
     """
     try:
         logger.info(f"Processing async chatbot request - language: {language}, message length: {len(freeform_text)}")
@@ -270,8 +271,11 @@ async def my_chatbot_async(language, freeform_text, chat_history=None, username=
             "context": base_context,
         }
         
-        # Invoke the LangGraph workflow (async)
-        result_state = await workflow.ainvoke(initial_state)
+        # Run workflow with flow tracing (logs node order, input/output per node)
+        from src.graph.flow_tracer import run_workflow_with_flow, get_flow_summary
+        result_state, flow = await run_workflow_with_flow(
+            workflow, initial_state, log_flow=True, include_snapshots_in_flow=True
+        )
         
         # Extract final result assembled by build_response_node
         final_result = result_state.get("final_result", {})
@@ -280,6 +284,9 @@ async def my_chatbot_async(language, freeform_text, chat_history=None, username=
             f"LangGraph workflow returned - category: {final_result.get('category')}, "
             f"intent: {final_result.get('intent')}, agentId: {final_result.get('agentId')}"
         )
+        if return_flow:
+            final_result = dict(final_result)
+            final_result["langgraph_flow"] = get_flow_summary(flow)
         return final_result
         
     except Exception as e:
@@ -330,8 +337,9 @@ def my_chatbot(language, freeform_text, chat_history=None, username=None, user_i
             "context": context,
         }
         
-        # Run async workflow in event loop (sync wrapper)
+        # Run async workflow in event loop with flow tracing (sync wrapper)
         import asyncio
+        from src.graph.flow_tracer import run_workflow_with_flow
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -341,7 +349,9 @@ def my_chatbot(language, freeform_text, chat_history=None, username=None, user_i
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
         
-        result_state = loop.run_until_complete(workflow.ainvoke(initial_state))
+        result_state, _flow = loop.run_until_complete(
+            run_workflow_with_flow(workflow, initial_state, log_flow=True, include_snapshots_in_flow=True)
+        )
         final_result = result_state.get("final_result", {})
         
         logger.info(f"LangGraph workflow returned - category: {final_result.get('category')}, intent: {final_result.get('intent')}, agentId: {final_result.get('agentId')}")

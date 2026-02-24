@@ -30,6 +30,11 @@ class ChatState(TypedDict, total=False):
     enriched_query: str              # LLM-enriched, self-contained query
     asins: list                      # Extracted ASINs from the query
     user_context: dict               # Built user context for downstream nodes
+    category_name: Optional[str]     # Product/topic category from query (e.g. "wireless earbuds"), or None
+    query_category_id: Optional[str]  # Numeric category ID from query (e.g. "1983610031"), or None
+    marketplace_from_query: Optional[str]  # Marketplace mentioned in query (e.g. "amazon.com"), or None
+    user_needs: Optional[str]       # Analysis type from query (e.g. "title and description analysis"), or None
+    requires_long_term_memory: bool  # True when query needs prior conversation context to resolve references
 
     # ─── Control Flow ─────────────────────────────────────────
     early_exit: bool                 # True → skip engine, use early_exit_result

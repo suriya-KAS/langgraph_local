@@ -21,11 +21,13 @@ Architecture (matches the architecture diagram):
     product    recom-     out_of   insights_kb
     _detail    mendation  _scope    _engine
     _engine    _engine    _engine      │
-      │          │          │          │
-      └──────────┴──────────┴──────────┘
-                       │
-                       ▼
-                  build_response ──→ END
+      │          │          │     route_after_insights_kb
+      │          │          │          ├─ (insights_api) → product_suggestion → build_response
+      │          │          │          └─ (category_mapper) → build_response
+      └──────────┴──────────┴──────────┴─────────────────────────────────────┐
+                       │                              │
+                       ▼                              ▼
+                  build_response ──────────────────→ END
 
     analytics_reporting path (if and only if user_intent == analytics_reporting):
 
@@ -55,6 +57,7 @@ from src.graph.nodes import (
     product_detail_engine_node,
     product_suggestion_node,
     recommendation_engine_node,
+    route_after_insights_kb,
     route_after_intent,
     route_after_work_status,
     user_intent_node,
@@ -119,11 +122,20 @@ def build_workflow():
     graph.add_edge("product_detail_engine", "build_response")
     graph.add_edge("recommendation_engine", "build_response")
     graph.add_edge("out_of_scope_engine", "build_response")
-    graph.add_edge("insights_kb_engine", "build_response")
 
     # ── Analytics flow: engine → product_suggestion → response ─
     graph.add_edge("analytics_engine", "product_suggestion")
     graph.add_edge("product_suggestion", "build_response")
+
+    # ── Insights KB flow: only INSIGHTS_API path → product_suggestion ─
+    graph.add_conditional_edges(
+        "insights_kb_engine",
+        route_after_insights_kb,
+        {
+            "product_suggestion": "product_suggestion",
+            "build_response": "build_response",
+        },
+    )
 
     # ── Terminal edge ──────────────────────────────────────────
     graph.add_edge("build_response", END)
